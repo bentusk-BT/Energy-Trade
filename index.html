@@ -2520,6 +2520,7 @@ async function fetchLivePrices(){
     const symMap={'WDS.AX':'WDS','KAR.AX':'KAR','DRO.AX':'DRO','PDN.AX':'PDN','OOO.AX':'OOO','OXY':'OXY','FRO':'FRO'};
     quotes.forEach(q=>{ const t=symMap[q.symbol]; if(t){ if(!S.checklist.step7[t]) S.checklist.step7[t]={}; S.checklist.step7[t].price=(q.regularMarketPrice||'').toString(); S.checklist.step7[t].chg=(q.regularMarketChangePercent?.toFixed(2)||'').toString(); if(S.prices[t]) S.prices[t]={price:q.regularMarketPrice?.toFixed(3)||'',chg:q.regularMarketChangePercent?.toFixed(2)||''}; } });
     saveState();
+    buildPriceCards();
     document.getElementById('stat-escalation').title='Live prices synced '+new Date().toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney'});
   } catch(e){
     console.warn('Live price fetch failed (CORS/network):', e.message);
