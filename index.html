@@ -1,0 +1,2983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Energy Trade Lab – Paper Trading Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#070e1a;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;font-size:15px}
+p,span,div,td,label,li{font-size:inherit}
+h1{font-size:22px}h2{font-size:19px}h3{font-size:17px}
+/* Info icon */
+.info-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(96,165,250,.2);color:#60a5fa;font-size:10px;font-weight:700;cursor:pointer;margin-left:4px;border:1px solid rgba(96,165,250,.3);flex-shrink:0;transition:background .2s}
+.info-icon:hover{background:rgba(96,165,250,.4)}
+/* Live price ticker */
+.price-ticker{display:flex;gap:0;overflow:hidden;background:#050c18;border-bottom:1px solid #1a2d4a}
+.price-ticker-inner{display:flex;gap:32px;padding:7px 20px;animation:ticker 60s linear infinite;white-space:nowrap}
+.price-ticker-inner:hover{animation-play-state:paused}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.ticker-item{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+/* AI badge */
+.ai-badge{background:linear-gradient(135deg,#7c3aed,#0891b2);color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em}
+/* Community card */
+.community-card{background:#0d1521;border:1px solid #1a2d4a;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px}
+/* Subscribe banner */
+.subscribe-banner{background:linear-gradient(135deg,rgba(16,185,129,.15),rgba(8,145,178,.15));border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:14px 18px}
+/* Probability bar */
+.prob-bar{height:8px;border-radius:4px;background:#1e3052;overflow:hidden;margin-top:4px}
+.prob-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#f59e0b,#10b981)}
+/* Analysis card */
+.analysis-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+/* Pulse dot */
+.live-dot{width:7px;height:7px;border-radius:50%;background:#10b981;animation:pulse-g 1.5s infinite;display:inline-block}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#070e1a}
+::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:3px}
+.card{background:#0d1521;border:1px solid #1a2d4a;border-radius:12px;padding:16px}
+.card-sm{background:#0a1220;border:1px solid #162438;border-radius:8px;padding:12px}
+input,select,textarea{background:#060f1c;border:1px solid #1e3052;color:#e2e8f0;border-radius:6px;padding:6px 10px;font-size:13px;width:100%;outline:none;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{border-color:#10b981}
+input[type=range]{-webkit-appearance:none;height:5px;border-radius:3px;background:#1e3052;padding:0;border:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#10b981;cursor:pointer}
+.tab-content{display:none}
+.tab-content.active{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.acc-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.acc-body.open{max-height:4000px}
+.acc-icon{transition:transform .3s}
+.acc-open .acc-icon{transform:rotate(180deg)}
+.tag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:600}
+.tag-g{background:rgba(16,185,129,.18);color:#10b981;border:1px solid rgba(16,185,129,.3)}
+.tag-r{background:rgba(239,68,68,.18);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+.tag-y{background:rgba(245,158,11,.18);color:#f59e0b;border:1px solid rgba(245,158,11,.3)}
+.tag-b{background:rgba(59,130,246,.18);color:#60a5fa;border:1px solid rgba(59,130,246,.3)}
+table{width:100%;border-collapse:collapse}
+th{background:#060f1c;color:#60a5fa;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;text-align:left;border-bottom:1px solid #1a2d4a}
+td{padding:7px 10px;font-size:13px;border-bottom:1px solid #0d1521}
+tr:hover td{background:rgba(255,255,255,.02)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .2s}
+.btn-green{background:#10b981;color:#000}
+.btn-green:hover{background:#0d9e6e}
+.btn-red{background:#ef4444;color:#fff}
+.btn-red:hover{background:#dc2626}
+.btn-outline{background:transparent;color:#10b981;border:1px solid #10b981}
+.btn-outline:hover{background:rgba(16,185,129,.1)}
+.btn-ghost{background:rgba(255,255,255,.05);color:#94a3b8;border:1px solid #1a2d4a}
+.btn-ghost:hover{background:rgba(255,255,255,.08)}
+.execute-btn{background:linear-gradient(135deg,#10b981,#0891b2);color:#000;font-size:16px;font-weight:700;padding:14px 32px;border-radius:10px;border:none;cursor:pointer;animation:pulse-g 2s infinite;width:100%;letter-spacing:.03em}
+@keyframes pulse-g{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.5)}50%{box-shadow:0 0 0 12px rgba(16,185,129,0)}}
+.sod-btn{background:linear-gradient(135deg,#0891b2,#1d4ed8);color:#fff;font-size:14px;font-weight:700;padding:10px 24px;border-radius:8px;border:none;cursor:pointer;flex:1}
+.eod-btn{background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;font-size:14px;font-weight:700;padding:10px 24px;border-radius:8px;border:none;cursor:pointer;flex:1}
+.step-badge{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#1e3052;color:#60a5fa;border:1px solid #2d4a7a;flex-shrink:0}
+.step-done{background:rgba(16,185,129,.2)!important;color:#10b981!important;border-color:#10b981!important}
+.pct-bar{height:6px;border-radius:3px;background:#1e3052;overflow:hidden}
+.pct-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .2s;color:#64748b;font-size:11px;font-weight:600;border:none;background:transparent;white-space:nowrap}
+.nav-btn:hover{color:#94a3b8;background:rgba(255,255,255,.04)}
+.nav-btn.active{color:#10b981;background:rgba(16,185,129,.1);border-bottom:2px solid #10b981}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;align-items:center;justify-content:center}
+.modal.open{display:flex}
+.modal-box{background:#0d1521;border:1px solid #1a2d4a;border-radius:14px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto}
+.checkmark{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:rgba(16,185,129,.2);color:#10b981;font-size:12px;animation:popIn .3s ease}
+@keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.journal-post{background:#0d1521;border:1px solid #1a2d4a;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #10b981}
+.journal-post.eod{border-left-color:#7c3aed}
+.conviction-ring{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;font-weight:700;font-size:14px;border:3px solid}
+#toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:200;transition:all .3s;transform:translateY(20px);opacity:0}
+#toast.show{transform:translateY(0);opacity:1}
+
+/* ---- LIGHT THEME ---- */
+body.light{background:#f1f5f9;color:#0f172a}
+body.light header{background:#ffffff;border-color:#e2e8f0}
+body.light nav{background:#ffffff;border-color:#e2e8f0}
+body.light .card{background:#ffffff;border-color:#e2e8f0}
+body.light .card-sm{background:#f8fafc;border-color:#e2e8f0}
+body.light .modal-box{background:#ffffff;border-color:#e2e8f0}
+body.light input,body.light select,body.light textarea{background:#f8fafc;border-color:#cbd5e1;color:#0f172a}
+body.light th{background:#f1f5f9;color:#1d4ed8}
+body.light td{border-color:#f1f5f9}
+body.light tr:hover td{background:rgba(0,0,0,.02)}
+body.light .nav-btn{color:#94a3b8}
+body.light .nav-btn:hover{background:rgba(0,0,0,.04);color:#475569}
+body.light .nav-btn.active{color:#10b981;background:rgba(16,185,129,.08)}
+body.light .btn-ghost{background:rgba(0,0,0,.04);color:#475569;border-color:#e2e8f0}
+body.light .btn-ghost:hover{background:rgba(0,0,0,.07)}
+body.light .step-badge{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}
+body.light .acc-icon path{stroke:#64748b}
+body.light .journal-post{background:#ffffff;border-color:#e2e8f0}
+body.light #action-summary{background:#f8fafc;border-color:#e2e8f0}
+body.light ::-webkit-scrollbar-track{background:#f1f5f9}
+body.light ::-webkit-scrollbar-thumb{background:#cbd5e1}
+body.light input[type=range]{background:#e2e8f0}
+body.light .modal{background:rgba(0,0,0,.5)}
+body.light .price-ticker{background:#f8fafc;border-color:#e2e8f0}
+body.light .community-card{background:#ffffff;border-color:#e2e8f0}
+body.light .subscribe-banner{background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(8,145,178,.08))}
+body.light .prob-bar{background:#e2e8f0}
+body.light .ai-badge{color:#fff}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header style="background:#050d18;border-bottom:1px solid #1a2d4a;padding:12px 16px">
+  <div style="max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:8px;height:8px;border-radius:50%;background:#10b981;animation:pulse-g 2s infinite"></div>
+        <span style="font-size:15px;font-weight:800;color:#10b981;letter-spacing:.02em">ENERGY TRADE LAB</span>
+        <span class="tag tag-y" style="font-size:10px">PAPER TRADING</span>
+      </div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px">14-Step Checklist · $20k Portfolio · Global Energy Macro Strategy</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="text-align:right">
+        <div style="font-size:11px;color:#64748b" id="live-date">--</div>
+        <div style="font-size:13px;font-weight:700;color:#10b981" id="live-time">--:--:--</div>
+        <div style="font-size:10px;color:#64748b">AEST</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:#64748b">Portfolio Value</div>
+        <div style="font-size:16px;font-weight:800;color:#fff" id="hdr-portfolio">$20,000.00</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;color:#64748b">Total P&amp;L</div>
+        <div style="font-size:16px;font-weight:800" id="hdr-pnl">$0.00</div>
+      </div>
+      <button id="theme-btn" onclick="toggleTheme()" style="background:none;border:1px solid #1a2d4a;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:18px;line-height:1;transition:all .2s" title="Toggle light/dark theme">🌙</button>
+      <button class="btn btn-ghost" onclick="exportCSV()" style="font-size:12px">⬇ Export CSV</button>
+      <button onclick="openSubscribeModal()" style="background:linear-gradient(135deg,#10b981,#0891b2);color:#000;font-weight:700;font-size:13px;padding:8px 16px;border-radius:8px;border:none;cursor:pointer">📧 Subscribe</button>
+    </div>
+  </div>
+</header>
+
+<!-- LIVE PRICE TICKER — TradingView real-time widget -->
+<div id="tv-ticker-wrap" style="border-bottom:1px solid #1a2d4a;overflow:hidden;max-height:46px">
+  <div class="tradingview-widget-container" style="height:46px">
+    <div class="tradingview-widget-container__widget"></div>
+    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+    {"symbols":[{"proName":"TVC:UKOIL","title":"Brent Oil"},{"proName":"TVC:USOIL","title":"WTI Crude"},{"proName":"NYMEX:NG1!","title":"Nat Gas"},{"proName":"NYMEX:HO1!","title":"Heating Oil"},{"proName":"ASX:WDS","title":"WDS.AX"},{"proName":"ASX:KAR","title":"KAR.AX"},{"proName":"ASX:DRO","title":"DRO.AX"},{"proName":"ASX:PDN","title":"PDN.AX"},{"proName":"ASX:OOO","title":"OOO.AX"},{"proName":"NYSE:OXY","title":"OXY"},{"proName":"NYSE:FRO","title":"FRO"},{"proName":"CURRENCYCOM:DXY","title":"DXY"},{"proName":"TVC:US10Y","title":"10Y Yield"}],"showSymbolLogo":true,"isTransparent":true,"displayMode":"adaptive","colorTheme":"dark","locale":"en"}
+    </script>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav style="background:#050d18;border-bottom:1px solid #1a2d4a;position:sticky;top:0;z-index:50">
+  <div style="max-width:1400px;margin:0 auto;display:flex;overflow-x:auto;padding:0 8px">
+    <button class="nav-btn active" onclick="switchTab('dashboard',this)">📊 <span>Dashboard</span></button>
+    <button class="nav-btn" onclick="switchTab('checklist',this)">✅ <span>14-Step Checklist</span></button>
+    <button class="nav-btn" onclick="switchTab('portfolio',this)">💼 <span>Portfolio</span></button>
+    <button class="nav-btn" onclick="switchTab('prices',this)">📈 <span>Price Monitor</span></button>
+    <button class="nav-btn" onclick="switchTab('calculator',this)">🧮 <span>Allocations</span></button>
+    <button class="nav-btn" onclick="switchTab('aitrades',this)">🤖 <span>AI Trades</span></button>
+    <button class="nav-btn" onclick="switchTab('community',this)">👥 <span>Community</span></button>
+    <button class="nav-btn" onclick="switchTab('journal',this)">📓 <span>Journal</span></button>
+    <button class="nav-btn" onclick="switchTab('stresstest',this)">⚡ <span>Stress Test</span></button>
+  </div>
+</nav>
+
+<div style="max-width:1400px;margin:0 auto;padding:16px" id="main-content">
+
+<!-- ====== TAB: DASHBOARD ====== -->
+<div class="tab-content active" id="tab-dashboard">
+  <!-- Execute Row -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#fff">⚡ Daily Checklist Execution</div>
+        <div style="font-size:12px;color:#64748b">Run all 14 steps, generate recommendations, log to journal</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="exec-mode" style="width:auto;padding:6px 12px;font-size:13px">
+          <option value="SOD">📅 Start of Day (SOD)</option>
+          <option value="EOD">🌙 End of Day (EOD)</option>
+        </select>
+        <button class="execute-btn" onclick="executeChecklist()" style="width:auto;padding:10px 28px;font-size:14px">⚡ EXECUTE CHECKLIST</button>
+      </div>
+    </div>
+    <!-- Action Summary -->
+    <div id="action-summary" style="background:#060f1c;border:1px solid #1a2d4a;border-radius:8px;padding:12px;min-height:60px">
+      <div style="color:#64748b;font-size:13px;text-align:center;padding:8px">Click EXECUTE CHECKLIST to generate today's recommendation →</div>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+    <div class="card-sm" style="text-align:center">
+      <div style="font-size:11px;color:#64748b;margin-bottom:4px">Capital</div>
+      <div style="font-size:18px;font-weight:800;color:#fff" id="stat-capital">$20,000</div>
+    </div>
+    <div class="card-sm" style="text-align:center">
+      <div style="font-size:11px;color:#64748b;margin-bottom:4px">Invested</div>
+      <div style="font-size:18px;font-weight:800;color:#60a5fa" id="stat-invested">$0</div>
+    </div>
+    <div class="card-sm" style="text-align:center">
+      <div style="font-size:11px;color:#64748b;margin-bottom:4px">Open Positions</div>
+      <div style="font-size:18px;font-weight:800;color:#f59e0b" id="stat-positions">0</div>
+    </div>
+    <div class="card-sm" style="text-align:center">
+      <div style="font-size:11px;color:#64748b;margin-bottom:4px">Unrealised P&amp;L</div>
+      <div style="font-size:18px;font-weight:800" id="stat-upnl">$0.00</div>
+    </div>
+    <div class="card-sm" style="text-align:center">
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:4px">Overall Conviction<span class="info-icon" onclick="showInfo('conviction')">i</span></div>
+      <div style="font-size:20px;font-weight:800" id="stat-conviction">—</div>
+    </div>
+    <div class="card-sm" style="text-align:center">
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:4px">War Escalation<span class="info-icon" onclick="showInfo('escalation')">i</span></div>
+      <div style="font-size:20px;font-weight:800;color:#ef4444" id="stat-escalation">—</div>
+    </div>
+  </div>
+
+  <!-- Chart + Recent Journal -->
+  <div style="display:grid;grid-template-columns:1fr 380px;gap:16px">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700">📉 Equity Curve</div>
+        <span class="tag tag-g" id="equity-tag">Paper Mode</span>
+      </div>
+      <div style="position:relative;height:220px"><canvas id="equityChart"></canvas></div>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">📓 Recent Journal</div>
+      <div id="recent-journal" style="max-height:260px;overflow-y:auto">
+        <div style="color:#64748b;font-size:12px;text-align:center;padding:20px">No journal entries yet. Execute checklist to start.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recommendation Table -->
+  <!-- Recommendation Table -->
+  <div class="card" style="margin-top:16px">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">📋 Today's Recommendation Table</div>
+    <div id="rec-table-content"><div style="color:#64748b;font-size:13px">Execute checklist to generate recommendations.</div></div>
+  </div>
+
+  <!-- Getting Started / How to Use -->
+  <div class="card" style="margin-top:16px;border-left:3px solid #10b981">
+    <div onclick="toggleAcc(this)" style="cursor:pointer;display:flex;align-items:center;gap:10px;user-select:none">
+      <span style="font-size:18px">🚀</span>
+      <span style="font-size:16px;font-weight:700;flex:1">Getting Started — How to Use Energy Trade Lab</span>
+      <svg class="acc-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="acc-body open">
+      <div style="padding-top:14px;border-top:1px solid #1a2d4a;margin-top:12px;display:flex;flex-direction:column;gap:14px">
+
+        <!-- Personal vs Public -->
+        <div class="card-sm" style="border-left:3px solid #60a5fa">
+          <div style="font-size:14px;font-weight:700;color:#60a5fa;margin-bottom:6px">🔒 Personal or Public?</div>
+          <div style="font-size:14px;color:#94a3b8;line-height:1.7">
+            <strong style="color:#fff">Right now it's 100% personal</strong> — all your data (checklist, journal, portfolio, trades) lives in <em>your browser's localStorage only</em>. Nobody else can see it.<br><br>
+            <strong style="color:#10b981">To make it public</strong> (host for others): Upload to GitHub Pages (free). Anyone with the link can use their own private copy — their data stays in their own browser too. It's like giving everyone their own blank workbook.<br><br>
+            <strong style="color:#f59e0b">To share P&L publicly</strong>: Use the Community tab → Share Your Performance. That optionally submits your stats to the leaderboard via Formspree (requires a free Formspree account setup).
+          </div>
+        </div>
+
+        <!-- Daily Workflow -->
+        <div class="card-sm" style="border-left:3px solid #10b981">
+          <div style="font-size:14px;font-weight:700;color:#10b981;margin-bottom:8px">📅 Daily Workflow (5–10 mins)</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:#94a3b8;line-height:1.6">
+            <div><span style="color:#10b981;font-weight:700">1.</span> Open app → check the <strong style="color:#fff">TradingView live ticker</strong> at top for today's oil/stock prices</div>
+            <div><span style="color:#10b981;font-weight:700">2.</span> Go to <strong style="color:#fff">📈 Price Monitor</strong> → copy today's prices into the input cards → click <strong>Generate Analysis</strong> for S/R levels, stops, probability</div>
+            <div><span style="color:#10b981;font-weight:700">3.</span> Go to <strong style="color:#fff">✅ 14-Step Checklist</strong> → work through Steps 1–9 at minimum (macro, news, war score, conviction)</div>
+            <div><span style="color:#10b981;font-weight:700">4.</span> Back on <strong style="color:#fff">Dashboard</strong> → select SOD (Start of Day) → click <strong>⚡ EXECUTE CHECKLIST</strong> → get your daily recommendation table</div>
+            <div><span style="color:#10b981;font-weight:700">5.</span> If entering a trade → go to <strong style="color:#fff">💼 Portfolio</strong> → Add Position with entry price, shares, stop, target</div>
+            <div><span style="color:#10b981;font-weight:700">6.</span> End of day: select EOD → Execute Checklist again → journal entry auto-saved</div>
+          </div>
+        </div>
+
+        <!-- AI Trades -->
+        <div class="card-sm" style="border-left:3px solid #a78bfa">
+          <div style="font-size:14px;font-weight:700;color:#a78bfa;margin-bottom:8px">🤖 How to Initiate AI Paper Trading</div>
+          <div style="font-size:14px;color:#94a3b8;line-height:1.7">
+            The AI Trade Engine reads <strong style="color:#fff">your checklist inputs</strong> to make decisions — so the richer your inputs, the smarter it trades.<br><br>
+            <strong style="color:#10b981">Step 1:</strong> Fill in <strong>Step 7</strong> of the Checklist with today's prices for all 7 stocks (or use Price Monitor → they sync)<br>
+            <strong style="color:#10b981">Step 2:</strong> Set <strong>Step 4</strong> escalation score (0–100 war risk slider) and sentiment<br>
+            <strong style="color:#10b981">Step 3:</strong> Set <strong>Step 9</strong> conviction scores per stock (sliders)<br>
+            <strong style="color:#10b981">Step 4:</strong> Go to <strong>🤖 AI Trades tab</strong> → click <strong>"Run AI Analysis"</strong><br><br>
+            The AI scores every stock 0–100 using all inputs, decides BUY/ACCUMULATE/HOLD/AVOID, calculates position sizes, and auto-enters paper positions (when price is available). Every run is logged to the AI Journal automatically.
+          </div>
+        </div>
+
+        <!-- Allocation 65% explained -->
+        <div class="card-sm" style="border-left:3px solid #f59e0b">
+          <div style="font-size:14px;font-weight:700;color:#f59e0b;margin-bottom:8px">🧮 Why Does the Allocation Tab Show 65%?</div>
+          <div style="font-size:14px;color:#94a3b8;line-height:1.7">
+            The allocation sliders mirror your <strong style="color:#fff">Step 9 conviction scores</strong> from the Checklist. The default is 65% because you haven't set them yet — it's a neutral starting point.<br><br>
+            <strong style="color:#10b981">To fix it:</strong> Go to ✅ Checklist → Step 9 → move the sliders for each stock to your actual conviction level → the Allocation tab will automatically reflect those values.<br><br>
+            <strong style="color:#fff">What the allocation calculation does:</strong> 80%+ conviction = full $5,000 allocation · 60–79% = $3,000 · 40–59% = $1,500 · Below 40% = $0. Total is capped at $20,000.
+          </div>
+        </div>
+
+        <!-- Journal explained -->
+        <div class="card-sm" style="border-left:3px solid #db2777">
+          <div style="font-size:14px;font-weight:700;color:#db2777;margin-bottom:8px">📓 Understanding the Journal Lab</div>
+          <div style="font-size:14px;color:#94a3b8;line-height:1.7">
+            The Journal has <strong style="color:#fff">3 separate spaces</strong>:<br><br>
+            <strong style="color:#10b981">☀️ Daily Posts</strong> — Auto-created every time you Execute Checklist (SOD or EOD). You never have to write these — the system generates them from your inputs. Shows conviction, Brent price, war risk, top picks, portfolio value.<br><br>
+            <strong style="color:#60a5fa">📆 Weekly Reflections</strong> — You write these every Friday. What worked, what didn't, key lessons. Saves to your browser permanently. When Formspree is set up, you can email it to yourself.<br><br>
+            <strong style="color:#a78bfa">📅 Monthly Learnings</strong> — End-of-month strategy review. Best/worst trade, rule improvements. Your trading evolution diary.<br><br>
+            <strong style="color:#f59e0b">Email delivery:</strong> Set up Formspree (free, 5 min) → Community tab → Setup Guide. Once connected, your weekly/monthly entries can be emailed to yourself automatically.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TAB: CHECKLIST ====== -->
+<div class="tab-content" id="tab-checklist">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:16px;font-weight:700">✅ 14-Step Daily Checklist</div>
+      <div style="font-size:12px;color:#64748b">Complete each step — data persists automatically</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="sod-btn" onclick="document.getElementById('exec-mode').value='SOD';executeChecklist();switchTab('dashboard',document.querySelector('.nav-btn'))">📅 Run SOD</button>
+      <button class="eod-btn" onclick="document.getElementById('exec-mode').value='EOD';executeChecklist();switchTab('dashboard',document.querySelector('.nav-btn'))">🌙 Run EOD</button>
+    </div>
+  </div>
+  <div id="checklist-steps"></div>
+</div>
+
+<!-- ====== TAB: PORTFOLIO ====== -->
+<div class="tab-content" id="tab-portfolio">
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">
+    <!-- Positions -->
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">💼 Open Positions</div>
+        <div style="overflow-x:auto">
+          <table id="positions-table">
+            <thead><tr>
+              <th>Ticker</th><th>Exch</th><th>Entry $</th><th>Current $</th>
+              <th>Shares</th><th>Cost</th><th>Value</th><th>P&amp;L</th><th>P&amp;L%</th>
+              <th>Stop</th><th>T1</th><th>Conv%</th><th>Action</th>
+            </tr></thead>
+            <tbody id="positions-body">
+              <tr><td colspan="13" style="text-align:center;color:#64748b;padding:20px">No positions. Add below.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:#94a3b8">📜 Trade History</div>
+        <div style="overflow-x:auto">
+          <table id="history-table">
+            <thead><tr><th>Date</th><th>Ticker</th><th>Action</th><th>Shares</th><th>Price</th><th>P&amp;L</th><th>Notes</th></tr></thead>
+            <tbody id="history-body"><tr><td colspan="7" style="text-align:center;color:#64748b;padding:16px">No trade history yet.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <!-- Add Position Form -->
+    <div class="card" style="position:sticky;top:80px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px">➕ Add / Update Position</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Ticker</label>
+          <select id="pos-ticker">
+            <option>WDS</option><option>KAR</option><option>DRO</option>
+            <option>PDN</option><option>OOO</option><option>OXY</option><option>FRO</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Exchange</label>
+            <select id="pos-exchange"><option>ASX</option><option>NYSE</option></select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Action</label>
+            <select id="pos-action"><option value="BUY">BUY</option><option value="SELL">SELL (Close)</option></select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Entry Price ($)</label>
+            <input type="number" id="pos-entry" placeholder="0.00" step="0.01">
+          </div>
+          <div>
+            <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Shares / Units</label>
+            <input type="number" id="pos-shares" placeholder="0">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Stop Loss ($)</label>
+            <input type="number" id="pos-stop" placeholder="0.00" step="0.01">
+          </div>
+          <div>
+            <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Target 1 ($)</label>
+            <input type="number" id="pos-t1" placeholder="0.00" step="0.01">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Current Price ($)</label>
+          <input type="number" id="pos-current" placeholder="0.00" step="0.01">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Conviction (%)</label>
+          <input type="number" id="pos-conv" placeholder="0-100" min="0" max="100">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Notes</label>
+          <textarea id="pos-notes" rows="2" placeholder="Entry reason..."></textarea>
+        </div>
+        <button class="btn btn-green" onclick="addPosition()" style="width:100%">➕ Add Position</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TAB: PRICE MONITOR ====== -->
+<div class="tab-content" id="tab-prices">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px">📈 Price Monitor <span class="live-dot"></span><span style="font-size:13px;color:#64748b;font-weight:400">Enter prices or click Fetch · TradingView charts above update automatically</span></div>
+      <div style="font-size:13px;color:#64748b">Enter prices manually or use live fetch. Full technical analysis auto-generated.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="startPriceRefresh()" style="font-size:13px">🔄 Fetch Live Prices</button>
+      <button class="btn btn-ghost" onclick="runFullPriceAnalysis()" style="font-size:13px">🧠 Generate Analysis</button>
+      <button class="btn btn-ghost" onclick="savePrices()" style="font-size:13px">💾 Save</button>
+    </div>
+  </div>
+
+  <!-- Commodity Strip with timeframe tabs -->
+  <div style="display:flex;align-items:center;gap:0;margin-bottom:12px;border:1px solid #1a2d4a;border-radius:8px;overflow:hidden;width:fit-content">
+    <button id="tf-1d" onclick="switchPriceTimeframe('1d')" style="padding:6px 18px;font-size:13px;font-weight:600;background:#1e3a5f;color:#10b981;border:none;cursor:pointer;border-right:1px solid #1a2d4a">📅 1D</button>
+    <button id="tf-1w" onclick="switchPriceTimeframe('1w')" style="padding:6px 18px;font-size:13px;font-weight:600;background:transparent;color:#64748b;border:none;cursor:pointer;border-right:1px solid #1a2d4a">📆 1W</button>
+    <button id="tf-1m" onclick="switchPriceTimeframe('1m')" style="padding:6px 18px;font-size:13px;font-weight:600;background:transparent;color:#64748b;border:none;cursor:pointer">📅 1M</button>
+  </div>
+  <!-- 1W/1M reference price inputs (hidden by default) -->
+  <div id="ref-price-panel" style="display:none;background:#0d1f35;border:1px solid #1a2d4a;border-radius:8px;padding:12px;margin-bottom:12px">
+    <div style="font-size:12px;color:#94a3b8;margin-bottom:8px" id="ref-price-label">Enter last week's closing prices to calculate weekly change:</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
+      <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Brent ref ($)</label><input type="number" id="ref-brent" placeholder="e.g. 105.00" step="0.01" oninput="updateRefCalc()"></div>
+      <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">WTI ref ($)</label><input type="number" id="ref-wti" placeholder="e.g. 97.00" step="0.01" oninput="updateRefCalc()"></div>
+      <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Nat Gas ref ($)</label><input type="number" id="ref-gas" placeholder="e.g. 2.90" step="0.001" oninput="updateRefCalc()"></div>
+      <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">TTF Gas ref (€)</label><input type="number" id="ref-ttf" placeholder="e.g. 33.00" step="0.01" oninput="updateRefCalc()"></div>
+      <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">JKM LNG ref ($)</label><input type="number" id="ref-jkm" placeholder="e.g. 12.50" step="0.01" oninput="updateRefCalc()"></div>
+    </div>
+    <div id="ref-calc-result" style="margin-top:10px;font-size:13px;color:#94a3b8"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px">
+    <div class="card-sm">
+      <div style="font-size:12px;color:#64748b;margin-bottom:6px;display:flex;align-items:center;gap:4px">🛢 Brent Crude (USD/bbl)<span class="info-icon" onclick="showInfo('conviction')">i</span></div>
+      <input type="number" id="brent-price" placeholder="107.62" step="0.01" oninput="syncCommodity('brent',this.value)" style="font-size:16px;font-weight:700">
+      <input type="number" id="brent-chg" placeholder="+1.14%" step="0.01" style="margin-top:6px" oninput="syncCommodity('brentChg',this.value)">
+    </div>
+    <div class="card-sm">
+      <div style="font-size:12px;color:#64748b;margin-bottom:6px">⛽ WTI Crude (USD/bbl)</div>
+      <input type="number" id="wti-price" placeholder="98.57" step="0.01" oninput="syncCommodity('wti',this.value)" style="font-size:16px;font-weight:700">
+      <input type="number" id="wti-chg" placeholder="+0.35%" step="0.01" style="margin-top:6px" oninput="syncCommodity('wtiChg',this.value)">
+    </div>
+    <div class="card-sm">
+      <div style="font-size:12px;color:#64748b;margin-bottom:6px">🔥 Natural Gas (USD/MMBtu)</div>
+      <input type="number" id="gas-price" placeholder="3.082" step="0.001" oninput="syncCommodity('gas',this.value)" style="font-size:16px;font-weight:700">
+      <input type="number" id="gas-chg" placeholder="+0.59%" step="0.01" style="margin-top:6px" oninput="syncCommodity('gasChg',this.value)">
+    </div>
+    <div class="card-sm">
+      <div style="font-size:12px;color:#64748b;margin-bottom:6px">🏭 TTF Gas (EUR/MWh)</div>
+      <input type="number" id="ttf-price" placeholder="35.00" step="0.01" oninput="syncCommodity('ttf',this.value)" style="font-size:16px;font-weight:700">
+      <input type="number" id="ttf-chg" placeholder="+0.8%" step="0.1" style="margin-top:6px" oninput="syncCommodity('ttfChg',this.value)">
+    </div>
+    <div class="card-sm">
+      <div style="font-size:12px;color:#64748b;margin-bottom:6px">🏭 JKM LNG (USD/MMBtu)</div>
+      <input type="number" id="jkm-price" placeholder="13.00" step="0.01" oninput="syncCommodity('jkm',this.value)" style="font-size:16px;font-weight:700">
+      <input type="number" id="jkm-chg" placeholder="+0.5%" step="0.1" style="margin-top:6px" oninput="syncCommodity('jkmChg',this.value)">
+    </div>
+    <div class="card-sm">
+      <div style="font-size:12px;color:#64748b;margin-bottom:6px">💵 DXY (USD Index)</div>
+      <input type="number" id="dxy-price" placeholder="103.5" step="0.01" oninput="S.checklist.step8.dxy=this.value;saveState()" style="font-size:16px;font-weight:700">
+      <div style="font-size:11px;color:#64748b;margin-top:4px">↑ DXY = ↓ Oil (inverse)</div>
+    </div>
+  </div>
+
+  <!-- TradingView Live Charts Row — static inline widgets (same mechanism as ticker tape) -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <span style="font-size:15px;font-weight:700">📊 Live Charts</span>
+      <span class="tag tag-g"><span class="live-dot" style="margin-right:4px"></span>Real-Time via TradingView</span>
+      <span style="font-size:12px;color:#64748b">1-month price action · click Full chart ↗ for weekly/monthly/intraday</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px" id="tv-chart-grid">
+
+      <div style="border-radius:8px;overflow:hidden">
+        <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+          <span>WDS <span style="font-weight:400;color:#64748b">— Woodside Energy</span></span>
+          <a href="https://www.tradingview.com/chart/?symbol=ASX%3AWDS" target="_blank" style="font-size:11px;color:#60a5fa;text-decoration:none">Full chart ↗</a>
+        </div>
+        <div class="tradingview-widget-container" style="height:220px"><div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"ASX:WDS","width":"100%","height":220,"locale":"en","dateRange":"1M","colorTheme":"dark","isTransparent":true,"autosize":false}</script></div>
+      </div>
+
+      <div style="border-radius:8px;overflow:hidden">
+        <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+          <span>KAR <span style="font-weight:400;color:#64748b">— Karoon Energy</span></span>
+          <a href="https://www.tradingview.com/chart/?symbol=ASX%3AKAR" target="_blank" style="font-size:11px;color:#60a5fa;text-decoration:none">Full chart ↗</a>
+        </div>
+        <div class="tradingview-widget-container" style="height:220px"><div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"ASX:KAR","width":"100%","height":220,"locale":"en","dateRange":"1M","colorTheme":"dark","isTransparent":true,"autosize":false}</script></div>
+      </div>
+
+      <div style="border-radius:8px;overflow:hidden">
+        <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+          <span>DRO <span style="font-weight:400;color:#64748b">— DroneShield</span></span>
+          <a href="https://www.tradingview.com/chart/?symbol=ASX%3ADRO" target="_blank" style="font-size:11px;color:#60a5fa;text-decoration:none">Full chart ↗</a>
+        </div>
+        <div class="tradingview-widget-container" style="height:220px"><div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"ASX:DRO","width":"100%","height":220,"locale":"en","dateRange":"1M","colorTheme":"dark","isTransparent":true,"autosize":false}</script></div>
+      </div>
+
+      <div style="border-radius:8px;overflow:hidden">
+        <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+          <span>PDN <span style="font-weight:400;color:#64748b">— Paladin Energy</span></span>
+          <a href="https://www.tradingview.com/chart/?symbol=ASX%3APDN" target="_blank" style="font-size:11px;color:#60a5fa;text-decoration:none">Full chart ↗</a>
+        </div>
+        <div class="tradingview-widget-container" style="height:220px"><div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"ASX:PDN","width":"100%","height":220,"locale":"en","dateRange":"1M","colorTheme":"dark","isTransparent":true,"autosize":false}</script></div>
+      </div>
+
+      <div style="border-radius:8px;overflow:hidden">
+        <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+          <span>OOO <span style="font-weight:400;color:#64748b">— BetaShares Crude</span></span>
+          <a href="https://www.tradingview.com/chart/?symbol=ASX%3AOOO" target="_blank" style="font-size:11px;color:#60a5fa;text-decoration:none">Full chart ↗</a>
+        </div>
+        <div class="tradingview-widget-container" style="height:220px"><div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"ASX:OOO","width":"100%","height":220,"locale":"en","dateRange":"1M","colorTheme":"dark","isTransparent":true,"autosize":false}</script></div>
+      </div>
+
+      <div style="border-radius:8px;overflow:hidden">
+        <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+          <span>OXY <span style="font-weight:400;color:#64748b">— Occidental</span></span>
+          <a href="https://www.tradingview.com/chart/?symbol=NYSE%3AOXY" target="_blank" style="font-size:11px;color:#60a5fa;text-decoration:none">Full chart ↗</a>
+        </div>
+        <div class="tradingview-widget-container" style="height:220px"><div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"NYSE:OXY","width":"100%","height":220,"locale":"en","dateRange":"1M","colorTheme":"dark","isTransparent":true,"autosize":false}</script></div>
+      </div>
+
+      <div style="border-radius:8px;overflow:hidden">
+        <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+          <span>FRO <span style="font-weight:400;color:#64748b">— Frontline</span></span>
+          <a href="https://www.tradingview.com/chart/?symbol=NYSE%3AFRO" target="_blank" style="font-size:11px;color:#60a5fa;text-decoration:none">Full chart ↗</a>
+        </div>
+        <div class="tradingview-widget-container" style="height:220px"><div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>{"symbol":"NYSE:FRO","width":"100%","height":220,"locale":"en","dateRange":"1M","colorTheme":"dark","isTransparent":true,"autosize":false}</script></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Stock Analysis Cards (manual inputs + calculated levels) -->
+  <div style="font-size:15px;font-weight:700;margin-bottom:10px">📐 Analysis Cards — Enter Prices to Generate Levels</div>
+  <div style="font-size:13px;color:#64748b;margin-bottom:10px">💡 Tip: Prices from TradingView above won't auto-fill here yet — type them in the card or they'll sync when you run the 14-Step Checklist.</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px" id="price-cards"></div>
+
+  <!-- Full Analysis Panel (generated) -->
+  <div class="card" style="margin-top:16px" id="full-analysis-panel">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <span style="font-size:15px;font-weight:700">🧠 Full Technical Analysis</span>
+      <span class="info-icon" onclick="showInfo('aisignals')">i</span>
+      <span style="font-size:12px;color:#64748b;margin-left:auto">Click "Generate Analysis" to refresh</span>
+    </div>
+    <div id="full-analysis-content" style="overflow-x:auto">
+      <div style="color:#64748b;font-size:14px;text-align:center;padding:24px">Enter prices above then click "Generate Analysis" to see entry/exit levels, support/resistance, volume profile, position sizing, probability scores and dynamic stops for all 7 stocks.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TAB: CALCULATOR ====== -->
+<div class="tab-content" id="tab-calculator">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <!-- Position Sizer -->
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px">🧮 Position Size Calculator</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Total Capital ($)</label>
+          <input type="number" id="calc-capital" value="20000" oninput="calcPosition()"></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Risk per Trade (%)</label>
+          <input type="number" id="calc-risk" value="2" step="0.1" oninput="calcPosition()"></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Entry Price ($)</label>
+          <input type="number" id="calc-entry" placeholder="1.50" step="0.01" oninput="calcPosition()"></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:4px">Stop Loss Price ($)</label>
+          <input type="number" id="calc-stop" placeholder="1.275" step="0.01" oninput="calcPosition()"></div>
+        <div class="card-sm" style="background:#060f1c">
+          <div id="calc-result" style="font-size:13px;color:#94a3b8">Enter values above to calculate position size.</div>
+        </div>
+      </div>
+    </div>
+    <!-- Allocation Calculator -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-size:15px;font-weight:700">💰 Conviction-Based Allocation ($20k)</span>
+        <span class="info-icon" onclick="showInfo('conviction')">i</span>
+        <button onclick="syncAllocFromStep9()" class="btn btn-ghost" style="font-size:12px;margin-left:auto;padding:5px 10px">🔄 Sync from Step 9</button>
+      </div>
+      <div class="card-sm" style="font-size:13px;color:#94a3b8;margin-bottom:10px;background:#060f1c">
+        💡 Sliders reflect your <strong style="color:#fff">Step 9 conviction scores</strong>. Default is 65% until you set them. Go to Checklist → Step 9 to change, or adjust here directly.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px" id="alloc-inputs"></div>
+      <div class="card-sm" style="background:#060f1c;margin-top:12px">
+        <div style="font-size:12px;font-weight:600;color:#10b981;margin-bottom:8px">Suggested Allocation</div>
+        <div id="alloc-result" style="font-size:13px;color:#94a3b8">Enter conviction scores above.</div>
+      </div>
+    </div>
+  </div>
+  <!-- Risk Rules -->
+  <div class="card" style="margin-top:16px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">⚖️ Risk Management Rules</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+      <div class="card-sm">
+        <div style="font-size:11px;color:#64748b">Max Risk / Position</div>
+        <div style="font-size:18px;font-weight:700;color:#ef4444">2%</div>
+        <div style="font-size:11px;color:#64748b">= $<span id="max-risk-amt">400</span> on $20k</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px;color:#64748b">Max per Stock</div>
+        <div style="font-size:18px;font-weight:700;color:#f59e0b">25%</div>
+        <div style="font-size:11px;color:#64748b">= $<span id="max-stock-amt">5,000</span> on $20k</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px;color:#64748b">Initial Stop Loss</div>
+        <div style="font-size:18px;font-weight:700;color:#60a5fa">–15%</div>
+        <div style="font-size:11px;color:#64748b">below entry price</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px;color:#64748b">Tightened Stop</div>
+        <div style="font-size:18px;font-weight:700;color:#10b981">–8–10%</div>
+        <div style="font-size:11px;color:#64748b">above fair value</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px;color:#64748b">Parabolic Stop</div>
+        <div style="font-size:18px;font-weight:700;color:#a78bfa">–5%</div>
+        <div style="font-size:11px;color:#64748b">if parabolic move</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px;color:#64748b">Profit-Taking</div>
+        <div style="font-size:16px;font-weight:700;color:#10b981">20/30/50</div>
+        <div style="font-size:11px;color:#64748b">Sell 20%@+20%, 30%@+30%, run 50%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TAB: AI TRADES ====== -->
+<div class="tab-content" id="tab-aitrades">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:17px;font-weight:800">🤖 AI Paper Trading Engine</span>
+        <span class="ai-badge">LIVE</span>
+        <span class="info-icon" onclick="showInfo('aitrades')">i</span>
+      </div>
+      <div style="font-size:13px;color:#64748b">AI reads today's checklist data, applies the 14-step rules, and makes autonomous paper trade decisions with full reasoning.</div>
+    </div>
+    <button class="execute-btn" onclick="runAITrades()" style="width:auto;padding:10px 24px;font-size:14px">🤖 Run AI Analysis</button>
+  </div>
+
+  <!-- AI How It Works explainer -->
+  <div class="card" style="margin-bottom:16px;border-left:3px solid #a78bfa">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:14px;font-weight:700;color:#a78bfa">⚙️ How the AI Engine Works</span>
+      <span style="font-size:12px;color:#64748b">· auto-runs after each checklist execution</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;font-size:13px;color:#94a3b8">
+      <div class="card-sm" style="background:#0a1628">
+        <div style="color:#10b981;font-weight:700;margin-bottom:4px">📊 What it reads</div>
+        Oil price + day % change · JKM LNG price · Natural Gas price · TTF gas · Brent-WTI spread · Iran escalation score · War sentiment · Liquidity index · Rate expectations
+      </div>
+      <div class="card-sm" style="background:#0a1628">
+        <div style="color:#60a5fa;font-weight:700;margin-bottom:4px">📈 Technical inputs</div>
+        RSI per stock (oversold/overbought) · 50-EMA position · Golden cross status · Day price change · Volume vs 20-day average · Your conviction scores from Step 9
+      </div>
+      <div class="card-sm" style="background:#0a1628">
+        <div style="color:#f59e0b;font-weight:700;margin-bottom:4px">🎯 Stock-specific logic</div>
+        WDS/KAR/PDN → LNG & gas premium scores · FRO → Brent-WTI spread + Hormuz risk · DRO → pure escalation play · OOO → direct Brent ETF, oil price dominant
+      </div>
+      <div class="card-sm" style="background:#0a1628">
+        <div style="color:#ef4444;font-weight:700;margin-bottom:4px">🚦 How to start it</div>
+        <strong style="color:#fff">Option A:</strong> Run SOD/EOD Checklist → AI fires automatically<br>
+        <strong style="color:#fff">Option B:</strong> Click "🤖 Run AI Analysis" above any time<br>
+        <strong style="color:#f59e0b">Note:</strong> Enter stock prices in Checklist Step 7 for full accuracy — without prices, targets show as "Manual"
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Market Overview -->
+  <div class="card" style="margin-bottom:16px" id="ai-overview">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">📡 AI Market Reading — Today</div>
+    <div id="ai-market-reading" style="color:#64748b;font-size:14px">Click "Run AI Analysis" to generate today's market assessment.</div>
+  </div>
+
+  <!-- AI Decision Table -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <span style="font-size:15px;font-weight:700">📋 AI Trade Decisions</span>
+      <span class="info-icon" onclick="showInfo('aisignals')">i</span>
+    </div>
+    <div id="ai-decisions-table" style="overflow-x:auto">
+      <div style="color:#64748b;font-size:13px;text-align:center;padding:24px">Run AI analysis to see trade decisions.</div>
+    </div>
+  </div>
+
+  <!-- AI Portfolio -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div style="font-size:15px;font-weight:700;margin-bottom:12px">💼 AI Paper Portfolio</div>
+      <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+        <div class="card-sm" style="flex:1;text-align:center"><div style="font-size:12px;color:#64748b">AI Capital</div><div style="font-size:18px;font-weight:800;color:#fff" id="ai-capital">$20,000</div></div>
+        <div class="card-sm" style="flex:1;text-align:center"><div style="font-size:12px;color:#64748b">AI P&L</div><div style="font-size:18px;font-weight:800" id="ai-pnl">$0</div></div>
+        <div class="card-sm" style="flex:1;text-align:center"><div style="font-size:12px;color:#64748b">AI Positions</div><div style="font-size:18px;font-weight:800;color:#f59e0b" id="ai-pos-count">0</div></div>
+      </div>
+      <div id="ai-portfolio-table" style="overflow-x:auto"><div style="color:#64748b;font-size:13px;text-align:center;padding:16px">No AI positions yet.</div></div>
+    </div>
+    <div class="card">
+      <div style="font-size:15px;font-weight:700;margin-bottom:12px">📓 AI Trade Journal</div>
+      <div id="ai-journal-entries" style="max-height:300px;overflow-y:auto">
+        <div style="color:#64748b;font-size:13px;text-align:center;padding:16px">AI journal auto-populates after each run.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TAB: COMMUNITY ====== -->
+<div class="tab-content" id="tab-community">
+  <!-- Subscribe CTA -->
+  <div class="subscribe-banner" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:#10b981;margin-bottom:4px">🌐 Energy Trade Lab Community</div>
+        <div style="font-size:13px;color:#94a3b8">Join traders using this tool. Get the AI trade journal + weekly energy market digest delivered to your inbox.</div>
+      </div>
+      <button onclick="openSubscribeModal()" style="background:#10b981;color:#000;font-weight:700;font-size:14px;padding:10px 24px;border-radius:8px;border:none;cursor:pointer;white-space:nowrap">📧 Join Community</button>
+    </div>
+  </div>
+
+  <!-- Community Stats -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:16px">
+    <div class="card-sm" style="text-align:center"><div style="font-size:12px;color:#64748b">Members</div><div style="font-size:22px;font-weight:800;color:#10b981" id="comm-members">12</div></div>
+    <div class="card-sm" style="text-align:center"><div style="font-size:12px;color:#64748b">Avg P&L</div><div style="font-size:22px;font-weight:800;color:#10b981">+8.4%</div></div>
+    <div class="card-sm" style="text-align:center"><div style="font-size:12px;color:#64748b">Top Pick</div><div style="font-size:18px;font-weight:800;color:#f59e0b">KAR.AX</div></div>
+    <div class="card-sm" style="text-align:center"><div style="font-size:12px;color:#64748b">Avg Conviction</div><div style="font-size:22px;font-weight:800;color:#60a5fa">72%</div></div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <span style="font-size:15px;font-weight:700">🏆 Community Leaderboard</span>
+      <span class="info-icon" onclick="showInfo('community')">i</span>
+      <span class="tag tag-y" style="margin-left:auto;font-size:11px">Updated daily</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="leaderboard-table">
+        <thead><tr><th>#</th><th>Trader</th><th>Portfolio</th><th>P&L $</th><th>P&L %</th><th>Top Pick</th><th>Conviction</th><th>Since</th></tr></thead>
+        <tbody id="leaderboard-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Your Spot -->
+  <div class="card">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">📤 Share Your Performance</div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:12px">Submit your portfolio snapshot to appear on the leaderboard. Name/alias is all that's required.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+      <div><label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Your Name / Alias</label><input type="text" id="comm-name" placeholder="e.g. EnergyTrader_Biv"></div>
+      <div><label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Email (for leaderboard)</label><input type="email" id="comm-email" placeholder="your@email.com"></div>
+      <div><label style="font-size:12px;color:#64748b;display:block;margin-bottom:3px">Top Position</label>
+        <select id="comm-top"><option>WDS</option><option>KAR</option><option>DRO</option><option>PDN</option><option>OOO</option><option>OXY</option><option>FRO</option></select>
+      </div>
+    </div>
+    <button class="btn btn-green" onclick="submitCommunity()">📤 Submit to Leaderboard</button>
+    <div style="font-size:11px;color:#64748b;margin-top:8px">⚠️ Paper trading only. Not financial advice. To enable real email delivery, connect a Formspree or EmailJS endpoint (see setup guide below).</div>
+  </div>
+
+  <!-- Setup guide -->
+  <div class="card" style="margin-top:16px" id="comm-setup">
+    <div onclick="toggleAcc(this)" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:14px;font-weight:700">🔧 Enable Real Email Delivery (Formspree Setup)</span>
+      <svg class="acc-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="acc-body">
+      <div style="padding-top:12px;font-size:13px;color:#94a3b8;line-height:1.8">
+        <b style="color:#10b981">Step 1:</b> Go to <a href="https://formspree.io" target="_blank" style="color:#60a5fa">formspree.io</a> → Create a free account → New Form → copy your endpoint URL (looks like <code style="background:#060f1c;padding:2px 6px;border-radius:4px">https://formspree.io/f/xxxx</code>)<br>
+        <b style="color:#10b981">Step 2:</b> In this file, find <code style="background:#060f1c;padding:2px 6px;border-radius:4px">FORMSPREE_ENDPOINT</code> and replace it with your endpoint.<br>
+        <b style="color:#10b981">Step 3:</b> When users subscribe or submit to leaderboard, their details go to your Formspree inbox + auto-forwarded to your email.<br>
+        <b style="color:#10b981">Step 4:</b> For weekly/monthly AI journal emails, export CSV and send manually, or connect Formspree to Mailchimp/Beehiiv for automation.<br>
+        <b style="color:#f59e0b">Free Tier:</b> 50 submissions/month on Formspree free plan. Upgrade for more.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TAB: JOURNAL ====== -->
+<div class="tab-content" id="tab-journal">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:16px;font-weight:700">📓 Trading Journal</div>
+      <div style="font-size:12px;color:#64748b">Daily SOD/EOD logs · Weekly reflections · Monthly learnings · Starting 23 Mar 2026</div>
+    </div>
+  </div>
+  <!-- Journal Sub-tabs -->
+  <div style="display:flex;gap:4px;margin-bottom:16px;background:#060f1c;border:1px solid #1a2d4a;border-radius:10px;padding:4px">
+    <button id="jt-daily" class="btn btn-green" onclick="switchJTab('daily')" style="flex:1;border-radius:7px;font-size:13px">☀️ Daily Posts</button>
+    <button id="jt-weekly" class="btn btn-ghost" onclick="switchJTab('weekly')" style="flex:1;border-radius:7px;font-size:13px">📆 Weekly Reflections</button>
+    <button id="jt-monthly" class="btn btn-ghost" onclick="switchJTab('monthly')" style="flex:1;border-radius:7px;font-size:13px">📅 Monthly Learnings</button>
+  </div>
+
+  <!-- Daily Posts -->
+  <div id="jtab-daily">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <select id="journal-filter" onchange="renderJournal()" style="width:auto;padding:6px 12px;font-size:13px">
+        <option value="ALL">All Entries</option>
+        <option value="SOD">SOD Only</option>
+        <option value="EOD">EOD Only</option>
+      </select>
+      <button class="btn btn-ghost" onclick="clearJournal()" style="font-size:12px">🗑 Clear</button>
+    </div>
+    <div id="journal-entries">
+      <div style="color:#64748b;font-size:13px;text-align:center;padding:40px">No entries yet. Run the SOD/EOD checklist to create your first post.</div>
+    </div>
+  </div>
+
+  <!-- Weekly Reflections -->
+  <div id="jtab-weekly" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">📆 New Weekly Reflection</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Week Ending</label><input type="date" id="wr-date" style="width:180px"></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">What went well this week?</label><textarea id="wr-well" rows="3" placeholder="Trades that worked, rules followed, good decisions..."></textarea></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">What didn't go well?</label><textarea id="wr-bad" rows="3" placeholder="Mistakes made, rules broken, emotional decisions..."></textarea></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Key lessons learned</label><textarea id="wr-lessons" rows="3" placeholder="What will you do differently next week?"></textarea></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">P&L this week ($)</label><input type="number" id="wr-pnl" placeholder="0.00" step="0.01" style="width:180px"></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Conviction score review (0-100)</label><input type="range" id="wr-score" min="0" max="100" value="65" oninput="document.getElementById('wr-score-val').textContent=this.value" style="width:100%"><span id="wr-score-val" style="color:#10b981;font-weight:700;font-size:13px">65</span></div>
+        <button class="btn btn-green" onclick="saveWeeklyReflection()" style="width:200px">💾 Save Weekly Reflection</button>
+      </div>
+    </div>
+    <div id="weekly-entries">
+      <div style="color:#64748b;font-size:13px;text-align:center;padding:30px">No weekly reflections yet. Add your first above.</div>
+    </div>
+  </div>
+
+  <!-- Monthly Learnings -->
+  <div id="jtab-monthly" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">📅 New Monthly Learning</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Month</label>
+            <select id="ml-month" style="width:100%">
+              <option>January</option><option>February</option><option>March</option><option>April</option>
+              <option>May</option><option>June</option><option>July</option><option>August</option>
+              <option>September</option><option>October</option><option>November</option><option>December</option>
+            </select></div>
+          <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Year</label>
+            <input type="number" id="ml-year" value="2026" style="width:100%"></div>
+        </div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Overall Strategy Assessment</label><textarea id="ml-strategy" rows="3" placeholder="How did the Iran conflict energy thesis play out this month?"></textarea></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Best trade of the month</label><textarea id="ml-best" rows="2" placeholder="Ticker, entry/exit, reason it worked..."></textarea></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Worst trade / biggest mistake</label><textarea id="ml-worst" rows="2" placeholder="What went wrong and why?"></textarea></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Key rule improvements for next month</label><textarea id="ml-rules" rows="3" placeholder="Updated entry/exit rules, conviction thresholds, position sizing changes..."></textarea></div>
+        <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Monthly P&L ($)</label><input type="number" id="ml-pnl" placeholder="0.00" step="0.01" style="width:180px"></div>
+        <button class="btn btn-green" onclick="saveMonthlyLearning()" style="width:200px">💾 Save Monthly Learning</button>
+      </div>
+    </div>
+    <div id="monthly-entries">
+      <div style="color:#64748b;font-size:13px;text-align:center;padding:30px">No monthly learnings yet.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TAB: STRESS TEST ====== -->
+<div class="tab-content" id="tab-stresstest">
+  <div style="margin-bottom:16px">
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">⚡ Historical Oil Crisis Stress Test</div>
+    <div style="font-size:12px;color:#64748b">How would your $20k portfolio have performed in past oil supply shocks? Apply scenario multipliers to current positions.</div>
+  </div>
+
+  <!-- Scenario Cards -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-bottom:20px" id="stress-scenarios"></div>
+
+  <!-- Custom Scenario -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">🔧 Custom Scenario Simulator</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:12px">
+      <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Scenario Name</label><input type="text" id="cs-name" placeholder="e.g. Strait of Hormuz Closure"></div>
+      <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Oil Price Shock %</label><input type="number" id="cs-oil" placeholder="+60" step="1"></div>
+      <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Energy Stocks Multiplier %</label><input type="number" id="cs-energy" placeholder="+40" step="1"></div>
+      <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Duration (months)</label><input type="number" id="cs-duration" placeholder="3" step="1"></div>
+    </div>
+    <button class="btn btn-outline" onclick="runCustomStress()">▶ Run Custom Scenario</button>
+    <div id="custom-stress-result" style="margin-top:12px"></div>
+  </div>
+
+  <!-- Stress Test Results on Current Portfolio -->
+  <div class="card">
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">📊 Apply to Current Portfolio ($20k)</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:12px">Select a scenario above then click Apply. Based on current positions and conviction-weighted allocation.</div>
+    <div id="stress-portfolio-result">
+      <div style="color:#64748b;font-size:13px;text-align:center;padding:20px">Select and apply a scenario above to see impact on your current portfolio.</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end main content -->
+
+<!-- SUBSCRIBE MODAL -->
+<div class="modal" id="subscribe-modal">
+  <div class="modal-box" style="max-width:480px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:17px;font-weight:800;color:#10b981">📧 Join the Community</div>
+      <button onclick="closeSubscribeModal()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:14px;color:#94a3b8;margin-bottom:16px;line-height:1.6">Get the <strong style="color:#fff">AI daily trade journal</strong>, weekly energy market digest, and community leaderboard updates delivered to your inbox.</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px">Your Name / Alias</label><input type="text" id="sub-name" placeholder="e.g. EnergyTrader_Biv"></div>
+      <div><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px">Email Address *</label><input type="email" id="sub-email" placeholder="your@email.com"></div>
+      <div><label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px">What content do you want?</label>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#94a3b8">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="sub-daily" checked style="width:auto"> ☀️ Daily AI Trade Journal (SOD/EOD)</label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="sub-weekly" checked style="width:auto"> 📆 Weekly Market Digest</label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="sub-monthly" checked style="width:auto"> 📅 Monthly Strategy Review</label>
+        </div>
+      </div>
+      <button onclick="submitSubscription()" class="execute-btn" style="padding:12px;font-size:14px;animation:none">📧 Subscribe — It's Free</button>
+      <div style="font-size:11px;color:#64748b;text-align:center">No spam. Unsubscribe anytime. Paper trading content only — not financial advice.</div>
+    </div>
+    <div id="sub-result" style="margin-top:12px;display:none"></div>
+  </div>
+</div>
+
+<!-- INFO MODAL -->
+<div class="modal" id="info-modal">
+  <div class="modal-box" style="max-width:520px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:800;color:#60a5fa" id="info-title">Info</div>
+      <button onclick="closeInfoModal()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div id="info-body" style="font-size:14px;color:#94a3b8;line-height:1.8"></div>
+  </div>
+</div>
+
+<!-- EXECUTE MODAL -->
+<div class="modal" id="exec-modal">
+  <div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="font-size:16px;font-weight:700" id="modal-title">⚡ Executing Checklist...</div>
+      <button onclick="closeModal()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div id="modal-steps" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+    <div id="modal-summary" style="display:none;background:#060f1c;border:1px solid #10b981;border-radius:8px;padding:14px">
+      <div style="font-size:13px;font-weight:600;color:#10b981;margin-bottom:8px">✅ Checklist Executed – Recommendation Ready</div>
+      <div id="modal-rec" style="font-size:13px;color:#94a3b8"></div>
+    </div>
+    <div id="modal-close-btn" style="display:none;margin-top:12px">
+      <button class="btn btn-green" onclick="closeModal()" style="width:100%">View Dashboard →</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const TICKERS = ['WDS','KAR','DRO','PDN','OOO','OXY','FRO'];
+const TICKER_NAMES = {WDS:'Woodside',KAR:'Karoon',DRO:'DroneShield',PDN:'Paladin',OOO:'BetaShares Crude',OXY:'Occidental',FRO:'Frontline'};
+const EXCHANGES = {WDS:'ASX',KAR:'ASX',DRO:'ASX',PDN:'ASX',OOO:'ASX',OXY:'NYSE',FRO:'NYSE'};
+const START_DATE = '2026-03-23';
+
+let S = loadState();
+
+function defaultState(){
+  return {
+    portfolio:{capital:20000,positions:[],history:[]},
+    checklist:{
+      step1:{brent:'',brentChg:'',ttf:'',ttfChg:'',jkm:'',jkmChg:'',notes:''},
+      step2:{m2:'',fed:'',ecb:'',boj:'',pboc:'',liquidityIndex:50,notes:''},
+      step3:{fedStatement:'',ecbStatement:'',bojStatement:'',rateExp:'hold',qtPace:'',notes:''},
+      step4:{newsSummary:'',xHeadline:'',escalationScore:50,sentiment:'stable',notes:''},
+      step5:{events:[{date:'2026-03-19',desc:'FOMC Meeting (next)'},{date:'2026-04-10',desc:'CPI Release'},{date:'2026-04-15',desc:'ASX Q1 Earnings Season'}]},
+      step6:{xejPrice:'',xejChg:'',oooPrice:'',oooNAV:'',oooPremium:'',oooVolume:'',sectorSentiment:60,notes:''},
+      step7:{WDS:{price:'',chg:'',vol:'',avgVol:''},KAR:{price:'',chg:'',vol:'',avgVol:''},DRO:{price:'',chg:'',vol:'',avgVol:''},PDN:{price:'',chg:'',vol:'',avgVol:''},OOO:{price:'',chg:'',vol:'',avgVol:''},OXY:{price:'',chg:'',vol:'',avgVol:''},FRO:{price:'',chg:'',vol:'',avgVol:''}},
+      step8:{rsi:{WDS:'',KAR:'',DRO:'',PDN:'',OOO:'',OXY:'',FRO:''},dxy:'',yields10y:'',oilCorr:'',ema:{WDS:{above50:false,golden:false},KAR:{above50:false,golden:false},DRO:{above50:false,golden:false},PDN:{above50:false,golden:false},OOO:{above50:false,golden:false},OXY:{above50:false,golden:false},FRO:{above50:false,golden:false}},notes:''},
+      step9:{overall:65,perStock:{WDS:65,KAR:65,DRO:65,PDN:65,OOO:65,OXY:65,FRO:65}},
+      step10:{},
+      step11:{},
+      step12:{WDS:{dip:'',orderType:'limit'},KAR:{dip:'',orderType:'limit'},DRO:{dip:'',orderType:'limit'},PDN:{dip:'',orderType:'limit'},OOO:{dip:'',orderType:'limit'},OXY:{dip:'',orderType:'limit'},FRO:{dip:'',orderType:'limit'}},
+      step13:{WDS:{t1:'',t2:''},KAR:{t1:'',t2:''},DRO:{t1:'',t2:''},PDN:{t1:'',t2:''},OOO:{t1:'',t2:''},OXY:{t1:'',t2:''},FRO:{t1:'',t2:''}},
+      step14:{WDS:{initStop:'',tightStop:'',paraStop:''},KAR:{initStop:'',tightStop:'',paraStop:''},DRO:{initStop:'',tightStop:'',paraStop:''},PDN:{initStop:'',tightStop:'',paraStop:''},OOO:{initStop:'',tightStop:'',paraStop:''},OXY:{initStop:'',tightStop:'',paraStop:''},FRO:{initStop:'',tightStop:'',paraStop:''}}
+    },
+    journal:[],
+    weeklyJournal:[],
+    monthlyJournal:[],
+    equityCurve:[{date:new Date().toISOString().slice(0,10),value:20000}],
+    prices:{WDS:{price:'',chg:''},KAR:{price:'',chg:''},DRO:{price:'',chg:''},PDN:{price:'',chg:''},OOO:{price:'',chg:''},OXY:{price:'',chg:''},FRO:{price:'',chg:''},brent:'',brentChg:'',ttf:'',ttfChg:'',jkm:'',jkmChg:''}
+  };
+}
+
+function loadState(){
+  try{ return JSON.parse(localStorage.getItem('iceTradelab')) || defaultState(); }
+  catch(e){ return defaultState(); }
+}
+function saveState(){ localStorage.setItem('iceTradelab', JSON.stringify(S)); }
+
+// ============================================================
+// CLOCK
+// ============================================================
+function updateClock(){
+  const now = new Date();
+  const aest = new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(now);
+  const date = new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Sydney',weekday:'short',day:'numeric',month:'short',year:'numeric'}).format(now);
+  document.getElementById('live-time').textContent = aest;
+  document.getElementById('live-date').textContent = date;
+}
+setInterval(updateClock,1000); updateClock();
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(id, btn){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+}
+
+// ============================================================
+// ACCORDION
+// ============================================================
+function toggleAcc(el){
+  const body = el.nextElementSibling;
+  const open = body.classList.toggle('open');
+  el.classList.toggle('acc-open', open);
+}
+
+// ============================================================
+// CONVICTION HELPERS
+// ============================================================
+function convClass(v){ return v>=80?'tag-g':v>=60?'tag-y':'tag-r'; }
+function convColor(v){ return v>=80?'#10b981':v>=60?'#f59e0b':'#ef4444'; }
+function convLabel(v){ return v>=80?'HIGH':v>=60?'MEDIUM':'LOW'; }
+
+// ============================================================
+// BUILD CHECKLIST HTML
+// ============================================================
+function buildChecklist(){
+  const steps = [
+    {n:1, title:'Macro Drivers – Oil & Gas Prices', icon:'🛢', html: buildStep1()},
+    {n:2, title:'Global Money Supply / Liquidity Trend', icon:'💵', html: buildStep2()},
+    {n:3, title:'Policy Updates (Fed/ECB/BoJ)', icon:'🏦', html: buildStep3()},
+    {n:4, title:'War Escalation / De-escalation', icon:'⚔️', html: buildStep4()},
+    {n:5, title:'Upcoming Dates / Catalysts', icon:'📅', html: buildStep5()},
+    {n:6, title:'ASX Energy Sector + OOO ETF', icon:'⚡', html: buildStep6()},
+    {n:7, title:'Individual Stock Review', icon:'📊', html: buildStep7()},
+    {n:8, title:'Technical & Flow Analysis', icon:'📉', html: buildStep8()},
+    {n:9, title:'Conviction Scoring (0–100%)', icon:'🎯', html: buildStep9()},
+    {n:10,title:'Portfolio P&L & Current Exposure', icon:'💼', html: buildStep10()},
+    {n:11,title:'Recommendation & Allocation', icon:'💡', html: buildStep11()},
+    {n:12,title:'Entry Rules (Dip-Buy Traps)', icon:'🎣', html: buildStep12()},
+    {n:13,title:'Upside Targets & Profit-Taking', icon:'🎯', html: buildStep13()},
+    {n:14,title:'Stop-Loss & Risk Management Rules', icon:'🛡', html: buildStep14()}
+  ];
+  const c = document.getElementById('checklist-steps');
+  c.innerHTML = steps.map(s=>`
+    <div class="card" style="margin-bottom:10px">
+      <div onclick="toggleAcc(this)" style="cursor:pointer;display:flex;align-items:center;gap:10px;user-select:none">
+        <div class="step-badge" id="badge-${s.n}">${s.n}</div>
+        <span style="font-size:13px">${s.icon}</span>
+        <span style="font-size:14px;font-weight:600;flex:1">${s.title}</span>
+        <svg class="acc-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="acc-body" id="step-body-${s.n}">
+        <div style="padding-top:14px;border-top:1px solid #1a2d4a;margin-top:12px">${s.html}</div>
+      </div>
+    </div>`).join('');
+}
+
+function row2(a,b){ return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${a}${b}</div>`; }
+function row3(a,b,c){ return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">${a}${b}${c}</div>`; }
+function lbl(txt,id,type='text',placeholder='',val='',extra=''){
+  return `<div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">${txt}</label><input type="${type}" id="${id}" placeholder="${placeholder}" value="${val||''}" ${extra} oninput="autosaveField('${id}')" style="width:100%"></div>`;
+}
+function lblTA(txt,id,val='',rows=2){
+  return `<div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">${txt}</label><textarea id="${id}" rows="${rows}" oninput="autosaveField('${id}')" style="width:100%">${val||''}</textarea></div>`;
+}
+function sliderField(txt,id,val=50){
+  return `<div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">${txt}: <span id="${id}-val" style="color:#10b981;font-weight:700">${val}</span></label><input type="range" id="${id}" min="0" max="100" value="${val}" oninput="document.getElementById('${id}-val').textContent=this.value;autosaveField('${id}')" style="width:100%"></div>`;
+}
+
+function buildStep1(){
+  const d=S.checklist.step1;
+  return `<div style="display:flex;flex-direction:column;gap:10px">
+    ${row3(lbl('Brent Crude Price (USD)','s1-brent','number','85.00',d.brent),lbl('Brent Daily Chg %','s1-brentChg','number','+1.2',d.brentChg),lbl('TTF Gas (EUR/MWh)','s1-ttf','number','35.00',d.ttf))}
+    ${row3(lbl('TTF Daily Chg %','s1-ttfChg','number','+0.8',d.ttfChg),lbl('JKM LNG (USD/MMBtu)','s1-jkm','number','13.00',d.jkm),lbl('JKM Daily Chg %','s1-jkmChg','number','+0.5',d.jkmChg))}
+    ${lblTA('Market Notes / Context','s1-notes',d.notes)}
+  </div>`;
+}
+function buildStep2(){
+  const d=S.checklist.step2;
+  return `<div style="display:flex;flex-direction:column;gap:10px">
+    ${row3(lbl('M2 Money Supply ($T)','s2-m2','number','21.5',d.m2),lbl('Fed Balance Sheet ($T)','s2-fed','number','7.2',d.fed),lbl('ECB Balance Sheet (€T)','s2-ecb','number','6.8',d.ecb))}
+    ${row2(lbl('BoJ Balance Sheet (¥T)','s2-boj','number','735',d.boj),lbl('PBoC Balance Sheet (¥T)','s2-pboc','number','42',d.pboc))}
+    ${sliderField('Global Liquidity Index','s2-liquidity',d.liquidityIndex||50)}
+    ${lblTA('Liquidity Notes','s2-notes',d.notes)}
+  </div>`;
+}
+function buildStep3(){
+  const d=S.checklist.step3;
+  return `<div style="display:flex;flex-direction:column;gap:10px">
+    ${lblTA('Fed Statement Summary','s3-fed',d.fedStatement)}
+    ${lblTA('ECB Statement Summary','s3-ecb',d.ecbStatement)}
+    ${lblTA('BoJ Statement Summary','s3-boj',d.bojStatement)}
+    ${row2(
+      `<div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Rate Expectation</label><select id="s3-rateExp" onchange="autosaveField('s3-rateExp')" style="width:100%"><option value="hike" ${d.rateExp=='hike'?'selected':''}>🔺 Hike</option><option value="hold" ${d.rateExp=='hold'?'selected':''}>⏸ Hold</option><option value="cut" ${d.rateExp=='cut'?'selected':''}>🔻 Cut</option></select></div>`,
+      lbl('QT Pace ($/month)','s3-qtPace','text','$95bn/mo',d.qtPace)
+    )}
+    ${lblTA('Policy Notes','s3-notes',d.notes)}
+  </div>`;
+}
+function buildStep4(){
+  const d=S.checklist.step4;
+  return `<div style="display:flex;flex-direction:column;gap:10px">
+    ${lblTA('News Summary (Iran/Strait of Hormuz)','s4-news',d.newsSummary,3)}
+    ${lblTA('X/Twitter Key Headline','s4-x',d.xHeadline)}
+    ${sliderField('War Escalation Score (0=Peace, 100=Full War)','s4-escalation',d.escalationScore||50)}
+    <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Sentiment Direction</label>
+    <select id="s4-sentiment" onchange="autosaveField('s4-sentiment')" style="width:100%">
+      <option value="escalating" ${d.sentiment=='escalating'?'selected':''}>🔴 Escalating</option>
+      <option value="stable" ${d.sentiment=='stable'?'selected':''}>🟡 Stable</option>
+      <option value="de-escalating" ${d.sentiment=='de-escalating'?'selected':''}>🟢 De-escalating</option>
+    </select></div>
+    ${lblTA('Notes','s4-notes',d.notes)}
+  </div>`;
+}
+function buildStep5(){
+  const d=S.checklist.step5;
+  const evRows=d.events.map((e,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <input type="date" id="s5-date-${i}" value="${e.date}" onchange="updateEvent(${i},'date',this.value)" style="width:140px">
+      <input type="text" id="s5-desc-${i}" value="${e.desc}" onchange="updateEvent(${i},'desc',this.value)" style="flex:1" placeholder="Event description">
+      <button onclick="removeEvent(${i})" class="btn btn-ghost" style="padding:4px 8px;font-size:11px">✕</button>
+    </div>`).join('');
+  return `<div>
+    <div id="s5-events">${evRows}</div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input type="date" id="s5-newdate" style="width:140px">
+      <input type="text" id="s5-newdesc" placeholder="Add event description" style="flex:1">
+      <button class="btn btn-outline" onclick="addEvent()" style="white-space:nowrap">+ Add</button>
+    </div>
+  </div>`;
+}
+function buildStep6(){
+  const d=S.checklist.step6;
+  return `<div style="display:flex;flex-direction:column;gap:10px">
+    ${row3(lbl('XEJ Price (ASX Energy Index)','s6-xejPrice','number','',d.xejPrice),lbl('XEJ Daily Chg %','s6-xejChg','number','',d.xejChg),lbl('OOO ETF Price','s6-oooPrice','number','',d.oooPrice))}
+    ${row3(lbl('OOO NAV','s6-oooNAV','number','',d.oooNAV),lbl('OOO Premium/Discount %','s6-oooPremium','number','',d.oooPremium),lbl('OOO Volume','s6-oooVolume','text','',d.oooVolume))}
+    ${sliderField('ASX Energy Sector Sentiment','s6-sectorSentiment',d.sectorSentiment||50)}
+    ${lblTA('Sector Notes','s6-notes',d.notes)}
+  </div>`;
+}
+function buildStep7(){
+  const rows=TICKERS.map(t=>{
+    const d=(S.checklist.step7||{})[t]||{};
+    return `<div class="card-sm" style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-weight:700;color:#10b981;font-size:14px">${t}</span>
+        <span class="tag tag-b">${EXCHANGES[t]}</span>
+        <span style="font-size:11px;color:#64748b">${TICKER_NAMES[t]}</span>
+      </div>
+      ${row3(
+        lbl('Price ($)','s7-'+t+'-price','number','',d.price),
+        lbl('Daily Chg %','s7-'+t+'-chg','number','',d.chg),
+        lbl('Volume','s7-'+t+'-vol','text','',d.vol)
+      )}
+      ${lbl('Avg Volume (20d)','s7-'+t+'-avgVol','text','',d.avgVol)}
+    </div>`;
+  }).join('');
+  return `<div>${rows}</div>`;
+}
+function buildStep8(){
+  const d=S.checklist.step8||{};
+  const rsiRows=TICKERS.map(t=>`
+    <div>${lbl('RSI ('+t+')','s8-rsi-'+t,'number','',((d.rsi||{})[t]||''))}</div>`).join('');
+  const emaRows=TICKERS.map(t=>`
+    <div class="card-sm" style="margin-bottom:6px">
+      <span style="font-weight:700;color:#10b981">${t}</span>
+      <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap">
+        <label style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:4px">
+          <input type="checkbox" id="s8-above50-${t}" ${((d.ema||{})[t]||{}).above50?'checked':''} onchange="autosaveField('s8-above50-${t}')"> Above 50d EMA
+        </label>
+        <label style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:4px">
+          <input type="checkbox" id="s8-golden-${t}" ${((d.ema||{})[t]||{}).golden?'checked':''} onchange="autosaveField('s8-golden-${t}')"> Golden Cross
+        </label>
+      </div>
+    </div>`).join('');
+  return `<div style="display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:12px;font-weight:600;color:#60a5fa">RSI Values (Daily)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px">${rsiRows}</div>
+    <div style="font-size:12px;font-weight:600;color:#60a5fa;margin-top:4px">Macro Correlations</div>
+    ${row3(lbl('DXY Level','s8-dxy','number','',d.dxy),lbl('10Y UST Yield %','s8-yields10y','number','',d.yields10y),lbl('Oil Correlation Score','s8-oilCorr','number','',d.oilCorr))}
+    <div style="font-size:12px;font-weight:600;color:#60a5fa;margin-top:4px">EMA Status & Crosses</div>
+    ${emaRows}
+    ${lblTA('Technical Notes / Key Levels','s8-notes',d.notes,3)}
+  </div>`;
+}
+function buildStep9(){
+  const d=S.checklist.step9||{overall:65,perStock:{}};
+  const stockSliders=TICKERS.map(t=>`
+    ${sliderField(t+' Conviction','s9-'+t,(d.perStock||{})[t]||65)}`).join('');
+  return `<div style="display:flex;flex-direction:column;gap:10px">
+    ${sliderField('OVERALL CONVICTION SCORE','s9-overall',d.overall||65)}
+    <div style="height:1px;background:#1a2d4a;margin:4px 0"></div>
+    <div style="font-size:12px;color:#60a5fa;font-weight:600">Per-Position Conviction</div>
+    ${stockSliders}
+    <div class="card-sm" style="background:#060f1c">
+      <div id="conviction-display" style="font-size:13px;color:#94a3b8">Adjust sliders above to set conviction levels.</div>
+    </div>
+  </div>`;
+}
+function buildStep10(){
+  return `<div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:12px">Live from Portfolio Tracker — add positions in the Portfolio tab.</div>
+    <div style="overflow-x:auto" id="s10-portfolio-preview"></div>
+  </div>`;
+}
+function buildStep11(){
+  return `<div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:12px">Based on conviction scores from Step 9. Execute checklist to compute.</div>
+    <div id="s11-recs"><div style="color:#64748b;font-size:13px">Execute checklist to generate recommendations.</div></div>
+  </div>`;
+}
+function buildStep12(){
+  const d=S.checklist.step12||{};
+  const rows=TICKERS.map(t=>`
+    <div class="card-sm" style="margin-bottom:8px">
+      <span style="font-weight:700;color:#10b981">${t}</span> <span class="tag tag-b">${EXCHANGES[t]}</span>
+      ${row2(
+        lbl('Dip-Buy Trigger Price ($)','s12-'+t+'-dip','number','',(d[t]||{}).dip),
+        `<div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Order Type</label>
+          <select id="s12-${t}-orderType" onchange="autosaveField('s12-${t}-orderType')">
+            <option value="limit" ${(d[t]||{}).orderType=='limit'?'selected':''}>Limit</option>
+            <option value="market" ${(d[t]||{}).orderType=='market'?'selected':''}>Market</option>
+            <option value="stop-limit" ${(d[t]||{}).orderType=='stop-limit'?'selected':''}>Stop-Limit</option>
+          </select></div>`
+      )}
+    </div>`).join('');
+  return `<div>${rows}</div>`;
+}
+function buildStep13(){
+  const d=S.checklist.step13||{};
+  const rows=TICKERS.map(t=>`
+    <div class="card-sm" style="margin-bottom:8px">
+      <div style="font-weight:700;color:#10b981;margin-bottom:8px">${t} <span class="tag tag-b">${EXCHANGES[t]}</span></div>
+      ${row3(
+        lbl('+20% Target (Sell 20%)','s13-'+t+'-t1','number','',(d[t]||{}).t1),
+        lbl('+30% Target (Sell 30%)','s13-'+t+'-t2','number','',(d[t]||{}).t2),
+        lbl('Remaining 50% Run Target','s13-'+t+'-t3','number','',(d[t]||{}).t3||'')
+      )}
+    </div>`).join('');
+  return `<div>
+    <div class="card-sm" style="background:#060f1c;margin-bottom:12px;font-size:12px;color:#94a3b8">
+      📌 Rule: At +20% → sell 20% · At +30% → sell another 30% · Remaining 50% runs with trailing stop
+    </div>
+    ${rows}</div>`;
+}
+function buildStep14(){
+  const d=S.checklist.step14||{};
+  const rows=TICKERS.map(t=>`
+    <div class="card-sm" style="margin-bottom:8px">
+      <div style="font-weight:700;color:#10b981;margin-bottom:8px">${t} <span class="tag tag-b">${EXCHANGES[t]}</span></div>
+      ${row3(
+        lbl('Initial Stop (–15%)','s14-'+t+'-init','number','',(d[t]||{}).initStop),
+        lbl('Tightened Stop (–8-10%)','s14-'+t+'-tight','number','',(d[t]||{}).tightStop),
+        lbl('Parabolic Stop (–5%)','s14-'+t+'-para','number','',(d[t]||{}).paraStop)
+      )}
+    </div>`).join('');
+  return `<div>
+    <div class="card-sm" style="background:#060f1c;margin-bottom:12px;font-size:12px;color:#94a3b8">
+      🛡 Rules: Initial –15% below entry → tighten to –8-10% once in profit → –5% if parabolic. Max 2% capital at risk per position ($400). Max 25% per stock ($5,000).
+    </div>
+    ${rows}</div>`;
+}
+
+// ============================================================
+// AUTOSAVE FIELD
+// ============================================================
+function autosaveField(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const val = el.type==='checkbox'?el.checked:(el.value||'');
+  // parse field id
+  if(id.startsWith('s1-')){ const k=id.slice(3); S.checklist.step1[k]=val; }
+  else if(id.startsWith('s2-')){ const k=id.slice(3); S.checklist.step2[k]=val; }
+  else if(id.startsWith('s3-')){ const k=id.slice(3); S.checklist.step3[k]=val; }
+  else if(id.startsWith('s4-')){ const k=id.slice(3); S.checklist.step4[k]=val; }
+  else if(id.startsWith('s6-')){ const k=id.slice(3); S.checklist.step6[k]=val; }
+  else if(id.startsWith('s7-')){
+    const p=id.slice(3).split('-'); // e.g. WDS-price
+    if(!S.checklist.step7[p[0]]) S.checklist.step7[p[0]]={};
+    S.checklist.step7[p[0]][p[1]]=val;
+  }
+  else if(id.startsWith('s8-rsi-')){ const t=id.slice(7); if(!S.checklist.step8.rsi) S.checklist.step8.rsi={}; S.checklist.step8.rsi[t]=val; }
+  else if(id.startsWith('s8-above50-')){ const t=id.slice(11); if(!S.checklist.step8.ema[t]) S.checklist.step8.ema[t]={}; S.checklist.step8.ema[t].above50=val; }
+  else if(id.startsWith('s8-golden-')){ const t=id.slice(10); if(!S.checklist.step8.ema[t]) S.checklist.step8.ema[t]={}; S.checklist.step8.ema[t].golden=val; }
+  else if(id==='s8-dxy'){ S.checklist.step8.dxy=val; }
+  else if(id==='s8-yields10y'){ S.checklist.step8.yields10y=val; }
+  else if(id==='s8-oilCorr'){ S.checklist.step8.oilCorr=val; }
+  else if(id==='s8-notes'){ S.checklist.step8.notes=val; }
+  else if(id==='s9-overall'){ S.checklist.step9.overall=+val; }
+  else if(id.startsWith('s9-')){ const t=id.slice(3); S.checklist.step9.perStock[t]=+val; }
+  else if(id.startsWith('s12-')){ const p=id.slice(4).split('-'); if(!S.checklist.step12[p[0]]) S.checklist.step12[p[0]]={};S.checklist.step12[p[0]][p[1]]=val; }
+  else if(id.startsWith('s13-')){ const p=id.slice(4).split('-'); if(!S.checklist.step13[p[0]]) S.checklist.step13[p[0]]={};S.checklist.step13[p[0]][p[1]]=val; }
+  else if(id.startsWith('s14-')){ const p=id.slice(4).split('-'); if(!S.checklist.step14[p[0]]) S.checklist.step14[p[0]]={};S.checklist.step14[p[0]][p[1]]=val; }
+  saveState();
+}
+
+function syncCommodity(key,val){
+  S.prices[key]=val;
+  if(key==='brent') S.checklist.step1.brent=val;
+  if(key==='brentChg') S.checklist.step1.brentChg=val;
+  if(key==='ttf') S.checklist.step1.ttf=val;
+  if(key==='ttfChg') S.checklist.step1.ttfChg=val;
+  if(key==='jkm') S.checklist.step1.jkm=val;
+  if(key==='jkmChg') S.checklist.step1.jkmChg=val;
+  saveState();
+}
+
+let activePriceTf = '1d';
+function switchPriceTimeframe(tf){
+  activePriceTf = tf;
+  ['1d','1w','1m'].forEach(t=>{
+    const btn = document.getElementById('tf-'+t);
+    if(!btn) return;
+    if(t===tf){ btn.style.background='#1e3a5f'; btn.style.color='#10b981'; }
+    else      { btn.style.background='transparent'; btn.style.color='#64748b'; }
+  });
+  const panel = document.getElementById('ref-price-panel');
+  const label = document.getElementById('ref-price-label');
+  if(tf==='1d'){ panel.style.display='none'; }
+  else {
+    panel.style.display='block';
+    if(tf==='1w') label.textContent='Enter last week\'s closing prices to calculate weekly % change:';
+    else            label.textContent='Enter last month\'s closing prices to calculate monthly % change:';
+    // Restore stored ref prices for this timeframe
+    const stored = S.prices['ref_'+tf] || {};
+    ['brent','wti','gas','ttf','jkm'].forEach(k=>{
+      const el = document.getElementById('ref-'+k);
+      if(el && stored[k]) el.value = stored[k];
+    });
+    updateRefCalc();
+  }
+}
+
+function updateRefCalc(){
+  const tf = activePriceTf;
+  if(tf==='1d') return;
+  const keys = ['brent','wti','gas','ttf','jkm'];
+  const labels = {brent:'Brent',wti:'WTI',gas:'Nat Gas',ttf:'TTF',jkm:'JKM LNG'};
+  const currMap = {brent:parseFloat(S.prices.brent)||0, wti:parseFloat(S.prices.wti)||0, gas:parseFloat(S.prices.gas)||0, ttf:parseFloat(S.prices.ttf)||0, jkm:parseFloat(S.prices.jkm)||0};
+  const stored = S.prices['ref_'+tf] || {};
+  let html = '<div style="display:flex;flex-wrap:wrap;gap:12px">';
+  keys.forEach(k=>{
+    const refEl = document.getElementById('ref-'+k);
+    const refVal = refEl ? parseFloat(refEl.value) : 0;
+    if(refVal) stored[k] = refEl.value;
+    const curr = currMap[k];
+    if(refVal > 0 && curr > 0){
+      const pct = ((curr - refVal)/refVal*100).toFixed(1);
+      const clr = pct>=0?'#10b981':'#ef4444';
+      html += `<div style="background:#060f1c;border-radius:6px;padding:6px 10px;min-width:100px">
+        <div style="font-size:11px;color:#64748b">${labels[k]}</div>
+        <div style="font-size:14px;font-weight:700;color:${clr}">${pct>=0?'+':''}${pct}%</div>
+        <div style="font-size:11px;color:#475569">${refVal} → ${curr}</div>
+      </div>`;
+    }
+  });
+  html += '</div>';
+  // Store ref prices
+  S.prices['ref_'+tf] = stored;
+  saveState();
+  const res = document.getElementById('ref-calc-result');
+  if(res) res.innerHTML = html;
+}
+
+// ============================================================
+// EVENTS (STEP 5)
+// ============================================================
+function updateEvent(i,key,val){ S.checklist.step5.events[i][key]=val; saveState(); }
+function removeEvent(i){ S.checklist.step5.events.splice(i,1); saveState(); buildChecklist(); }
+function addEvent(){
+  const d=document.getElementById('s5-newdate').value;
+  const desc=document.getElementById('s5-newdesc').value;
+  if(!desc) return;
+  S.checklist.step5.events.push({date:d,desc});
+  saveState(); buildChecklist();
+  // Reopen step 5
+  const body=document.getElementById('step-body-5');
+  if(body && !body.classList.contains('open')){ body.classList.add('open'); }
+}
+
+// ============================================================
+// PRICE CARDS
+// ============================================================
+function buildPriceCards(){
+  const c=document.getElementById('price-cards');
+  if(!c) return;
+  c.innerHTML=TICKERS.map(t=>{
+    const p=(S.prices||{})[t]||{};
+    const chg=parseFloat(p.chg)||0;
+    const price=parseFloat(p.price)||0;
+    const clr=chg>=0?'#10b981':'#ef4444';
+    const step7=(S.checklist.step7||{})[t]||{};
+    const rsi=parseFloat(((S.checklist.step8||{}).rsi||{})[t])||0;
+    // Derive S/R from price if we have it
+    const sup=price>0?(price*0.92).toFixed(3):'—';
+    const res=price>0?(price*1.08).toFixed(3):'—';
+    const entry=price>0?(price*0.98).toFixed(3):'—';
+    const stopDyn=price>0?(price*0.85).toFixed(3):'—';
+    const t1=price>0?(price*1.20).toFixed(3):'—';
+    const rsiClr=rsi>70?'#ef4444':rsi<35?'#10b981':'#f59e0b';
+    const rsiLabel=rsi>70?'Overbought':rsi<35?'Oversold — BUY zone':rsi>0?'Neutral':'—';
+    const vol=step7.vol||''; const avgVol=step7.avgVol||'';
+    const volRatio=vol&&avgVol?(parseFloat(vol)/parseFloat(avgVol)):0;
+    const volLabel=volRatio>1.5?'🔥 HIGH — institutions active':volRatio>1?'📈 Above avg':volRatio>0?'📉 Below avg':'—';
+    const volClr=volRatio>1.5?'#10b981':volRatio>1?'#60a5fa':'#64748b';
+    const conv=(S.checklist.step9.perStock||{})[t]||65;
+    return `<div class="card" style="border-left:3px solid ${convColor(conv)}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <span style="font-weight:800;color:#fff;font-size:18px">${t}</span>
+          <span class="tag tag-b" style="margin-left:6px">${EXCHANGES[t]}</span>
+          <span style="font-size:12px;color:#64748b;margin-left:6px">${TICKER_NAMES[t]}</span>
+        </div>
+        <span class="tag ${convClass(conv)}">${conv}% conv</span>
+      </div>
+      <!-- Price Input Row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <div style="font-size:11px;color:#64748b;margin-bottom:3px">Current Price</div>
+          <input type="number" id="price-${t}" value="${p.price||step7.price||''}" placeholder="0.000" step="0.001"
+            oninput="updatePrice('${t}','price',this.value);refreshPriceCard('${t}')" style="font-size:16px;font-weight:700">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#64748b;margin-bottom:3px">Day Chg %</div>
+          <input type="number" id="chg-${t}" value="${p.chg||step7.chg||''}" placeholder="±0.00" step="0.01"
+            oninput="updatePrice('${t}','chg',this.value)" style="font-size:15px;color:${clr};font-weight:700">
+        </div>
+      </div>
+      <!-- Analysis Grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+        <div class="card-sm" style="padding:8px;text-align:center">
+          <div style="font-size:10px;color:#64748b">Support</div>
+          <div style="font-size:13px;font-weight:700;color:#10b981" id="sup-${t}">$${sup}</div>
+        </div>
+        <div class="card-sm" style="padding:8px;text-align:center">
+          <div style="font-size:10px;color:#64748b">Entry Zone</div>
+          <div style="font-size:13px;font-weight:700;color:#60a5fa" id="entry-${t}">$${entry}</div>
+        </div>
+        <div class="card-sm" style="padding:8px;text-align:center">
+          <div style="font-size:10px;color:#64748b">Resistance</div>
+          <div style="font-size:13px;font-weight:700;color:#ef4444" id="res-${t}">$${res}</div>
+        </div>
+        <div class="card-sm" style="padding:8px;text-align:center">
+          <div style="font-size:10px;color:#64748b">Stop –15%</div>
+          <div style="font-size:13px;font-weight:700;color:#ef4444" id="stop-${t}">$${stopDyn}</div>
+        </div>
+        <div class="card-sm" style="padding:8px;text-align:center">
+          <div style="font-size:10px;color:#64748b">Target +20%</div>
+          <div style="font-size:13px;font-weight:700;color:#10b981" id="t1-${t}">$${t1}</div>
+        </div>
+        <div class="card-sm" style="padding:8px;text-align:center">
+          <div style="font-size:10px;color:#64748b">RSI Signal</div>
+          <div style="font-size:12px;font-weight:700;color:${rsiClr}">${rsi>0?rsi+' · '+rsiLabel:rsiLabel}</div>
+        </div>
+      </div>
+      <!-- Volume -->
+      <div class="card-sm" style="padding:8px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+          <div>
+            <div style="font-size:10px;color:#64748b">Volume</div>
+            <input type="text" id="vol-${t}" value="${vol}" placeholder="e.g. 2.4M" oninput="updateStep7Vol('${t}',this.value)" style="width:100px;padding:3px 6px;font-size:12px;margin-top:2px">
+          </div>
+          <div>
+            <div style="font-size:10px;color:#64748b">Avg Vol (20d)</div>
+            <input type="text" id="avgvol-${t}" value="${avgVol}" placeholder="e.g. 1.8M" oninput="updateStep7AvgVol('${t}',this.value)" style="width:100px;padding:3px 6px;font-size:12px;margin-top:2px">
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:#64748b">Who's Buying?</div>
+            <div style="font-size:12px;font-weight:700;color:${volClr}">${volLabel}</div>
+          </div>
+        </div>
+      </div>
+      <!-- Prob + Pos Size -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="card-sm" style="padding:8px">
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">Trade Probability<span class="info-icon" onclick="showInfo('aisignals')" style="margin-left:3px">i</span></div>
+          <div id="prob-${t}">
+            ${price>0?`<div style="font-size:14px;font-weight:700;color:${convColor(conv)}">${Math.min(92,Math.round(conv*0.8+10))}%</div><div class="prob-bar"><div class="prob-fill" style="width:${Math.min(92,Math.round(conv*0.8+10))}%"></div></div>`:'<div style="font-size:12px;color:#64748b">Enter price</div>'}
+          </div>
+        </div>
+        <div class="card-sm" style="padding:8px">
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">Position Size ($20k, 2% risk)</div>
+          <div id="possize-${t}" style="font-size:13px;font-weight:700;color:#60a5fa">
+            ${price>0&&parseFloat(price)>0?'$'+Math.round(Math.min(5000,(20000*0.02)/(parseFloat(price)*0.15))*parseFloat(price)/100)*100:'Enter price'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  // Restore commodity prices
+  const pr=S.prices||{};
+  ['brent','wti','gas','ttf','jkm'].forEach(k=>{
+    const el=document.getElementById(k+'-price'); if(el) el.value=pr[k]||'';
+    const ec=document.getElementById(k+'-chg'); if(ec) ec.value=pr[k+'Chg']||'';
+  });
+  const dxye=document.getElementById('dxy-price'); if(dxye) dxye.value=S.checklist.step8.dxy||'';
+}
+
+function refreshPriceCard(t){
+  const priceEl=document.getElementById('price-'+t); if(!priceEl) return;
+  const price=parseFloat(priceEl.value)||0; if(!price) return;
+  const sup=(price*0.92).toFixed(3); const res=(price*1.08).toFixed(3);
+  const entry=(price*0.98).toFixed(3); const stop=(price*0.85).toFixed(3); const t1=(price*1.20).toFixed(3);
+  const conv=(S.checklist.step9.perStock||{})[t]||65;
+  const prob=Math.min(92,Math.round(conv*0.8+10));
+  const maxAlloc=Math.min(5000,20000*0.25); const riskAmt=20000*0.02; const stopDist=price*0.15;
+  const shares=Math.floor(riskAmt/stopDist); const posSize=Math.round(Math.min(maxAlloc,shares*price)/100)*100;
+  ['sup','entry','res','stop','t1'].forEach((k,i)=>{const e=document.getElementById(k+'-'+t);if(e)e.textContent='$'+[sup,entry,res,stop,t1][i];});
+  const pEl=document.getElementById('prob-'+t);
+  if(pEl) pEl.innerHTML=`<div style="font-size:14px;font-weight:700;color:${convColor(conv)}">${prob}%</div><div class="prob-bar"><div class="prob-fill" style="width:${prob}%"></div></div>`;
+  const psEl=document.getElementById('possize-'+t);
+  if(psEl) psEl.textContent=posSize>0?'$'+posSize.toLocaleString():'—';
+}
+
+function updateStep7Vol(t,v){ if(!S.checklist.step7[t]) S.checklist.step7[t]={}; S.checklist.step7[t].vol=v; saveState(); buildPriceCards(); }
+function updateStep7AvgVol(t,v){ if(!S.checklist.step7[t]) S.checklist.step7[t]={}; S.checklist.step7[t].avgVol=v; saveState(); buildPriceCards(); }
+function updatePrice(t,key,val){ if(!S.prices[t]) S.prices[t]={}; S.prices[t][key]=val; if(!S.checklist.step7[t]) S.checklist.step7[t]={}; if(key==='price') S.checklist.step7[t].price=val; if(key==='chg') S.checklist.step7[t].chg=val; saveState(); }
+function savePrices(){ toast('Prices saved ✓','green'); saveState(); }
+
+function runFullPriceAnalysis(){
+  const rows=TICKERS.map(t=>{
+    const p=S.prices[t]||{}; const price=parseFloat(p.price||((S.checklist.step7||{})[t]||{}).price)||0;
+    const chg=parseFloat(p.chg||((S.checklist.step7||{})[t]||{}).chg)||0;
+    const rsi=parseFloat(((S.checklist.step8||{}).rsi||{})[t])||0;
+    const conv=(S.checklist.step9.perStock||{})[t]||65;
+    const above50=(((S.checklist.step8||{}).ema||{})[t]||{}).above50||false;
+    const golden=(((S.checklist.step8||{}).ema||{})[t]||{}).golden||false;
+    const vol=((S.checklist.step7||{})[t]||{}).vol||''; const avgVol=((S.checklist.step7||{})[t]||{}).avgVol||'';
+    const volR=vol&&avgVol?parseFloat(vol)/parseFloat(avgVol):0;
+    if(!price) return `<tr><td style="font-weight:700;color:#10b981">${t}</td><td colspan="10" style="color:#64748b;font-size:13px">Enter price in card above to generate analysis</td></tr>`;
+    const sup=(price*0.92).toFixed(3); const sup2=(price*0.85).toFixed(3);
+    const res=(price*1.08).toFixed(3); const res2=(price*1.15).toFixed(3);
+    const entry=(price*0.98).toFixed(3); const stop=(price*0.85).toFixed(3);
+    const t1=(price*1.20).toFixed(3); const t2=(price*1.30).toFixed(3);
+    const riskAmt=20000*0.02; const stopDist=price*0.15; const shares=Math.floor(riskAmt/stopDist);
+    const posSize=Math.round(Math.min(5000,shares*price)/100)*100;
+    const prob=Math.min(92,Math.round(conv*0.8+(rsi>0&&rsi<40?10:0)+(above50?5:0)+(golden?8:0)+(volR>1.5?5:0)));
+    const signal=prob>=75?'🟢 BUY':prob>=60?'🟡 ACCUMULATE':prob>=45?'⚪ WATCH':'🔴 AVOID';
+    const dynamicStop=above50?(price*0.90).toFixed(3):(price*0.85).toFixed(3);
+    const whosBuying=volR>1.8?'💰 Institutions accumulating':volR>1.2?'📈 Above-avg — smart money interest':volR>0?'📉 Low volume — retail/noise':'—';
+    const rsiSignal=rsi>70?'⚠️ Overbought':rsi<35?'🎯 Oversold — high probability entry':rsi>0?'Neutral':'—';
+    return `<tr>
+      <td><span style="font-weight:800;color:#10b981;font-size:15px">${t}</span><br><span style="font-size:11px;color:#64748b">${EXCHANGES[t]}</span></td>
+      <td><span style="font-size:15px;font-weight:700">$${price.toFixed(3)}</span><br><span style="color:${chg>=0?'#10b981':'#ef4444'};font-size:12px">${chg>=0?'+':''}${chg}%</span></td>
+      <td><span style="color:#10b981">S1: $${sup}</span><br><span style="color:#10b981;font-size:11px">S2: $${sup2}</span></td>
+      <td><span style="color:#60a5fa;font-weight:700">$${entry}</span><br><span style="font-size:11px;color:#64748b">–2% dip</span></td>
+      <td><span style="color:#ef4444">R1: $${res}</span><br><span style="color:#ef4444;font-size:11px">R2: $${res2}</span></td>
+      <td><span style="color:#ef4444;font-weight:700">$${dynamicStop}</span><br><span style="font-size:11px;color:#64748b">${above50?'Tight (above 50EMA)':'Initial –15%'}</span></td>
+      <td><span style="color:#10b981">T1: $${t1}</span><br><span style="color:#60a5fa;font-size:11px">T2: $${t2}</span></td>
+      <td><span style="font-weight:700;color:#fff">$${posSize.toLocaleString()}</span><br><span style="font-size:11px;color:#64748b">${shares} shares</span></td>
+      <td><span style="font-weight:700;color:${prob>=75?'#10b981':prob>=55?'#f59e0b':'#ef4444'};font-size:15px">${prob}%</span><div class="prob-bar" style="width:80px;margin-top:3px"><div class="prob-fill" style="width:${prob}%"></div></div></td>
+      <td>${signal}</td>
+      <td><div style="font-size:12px;color:#94a3b8">${whosBuying}</div><div style="font-size:11px;color:#64748b;margin-top:2px">${rsiSignal}</div></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('full-analysis-content').innerHTML=`
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Stock</th><th>Price / Chg</th><th>Support Levels</th><th>Entry Zone<span class="info-icon" onclick="showInfo('aisignals')" style="margin-left:4px">i</span></th><th>Resistance</th><th>Dynamic Stop<span class="info-icon" onclick="showInfo('escalation')" style="margin-left:4px">i</span></th><th>Profit Targets</th><th>Position Size<span class="info-icon" onclick="showInfo('conviction')" style="margin-left:4px">i</span></th><th>Probability</th><th>Signal</th><th>Volume / Who's Buying</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div style="font-size:12px;color:#64748b;margin-top:10px;padding:8px 12px;background:#060f1c;border-radius:6px">
+      ℹ️ <strong>Entry Zone</strong> = –2% below current. <strong>Support</strong> = –8%/–15%. <strong>Resistance</strong> = +8%/+15%. <strong>Dynamic Stop</strong> tightens to –10% once above 50-EMA. <strong>Position Size</strong> = 2% capital risk rule. <strong>Probability</strong> = conviction + RSI + EMA + volume composite.
+    </div>`;
+  toast('Analysis generated ✓','green');
+}
+
+// ============================================================
+// PORTFOLIO
+// ============================================================
+function addPosition(){
+  const ticker=document.getElementById('pos-ticker').value;
+  const exchange=document.getElementById('pos-exchange').value;
+  const action=document.getElementById('pos-action').value;
+  const entry=parseFloat(document.getElementById('pos-entry').value)||0;
+  const shares=parseFloat(document.getElementById('pos-shares').value)||0;
+  const stop=parseFloat(document.getElementById('pos-stop').value)||0;
+  const t1=parseFloat(document.getElementById('pos-t1').value)||0;
+  const current=parseFloat(document.getElementById('pos-current').value)||entry;
+  const conv=parseFloat(document.getElementById('pos-conv').value)||65;
+  const notes=document.getElementById('pos-notes').value;
+  if(!entry||!shares){ toast('Enter entry price and shares','red'); return; }
+
+  const now=new Date();
+  const dateStr=now.toISOString().slice(0,10);
+  const timeStr=now.toTimeString().slice(0,8);
+
+  if(action==='SELL'){
+    const idx=S.portfolio.positions.findIndex(p=>p.ticker===ticker);
+    if(idx>=0){
+      const pos=S.portfolio.positions[idx];
+      const pnl=(current-pos.entry)*Math.min(shares,pos.shares);
+      S.portfolio.history.push({date:dateStr,time:timeStr,ticker,action:'SELL',shares:Math.min(shares,pos.shares),price:current,pnl:pnl.toFixed(2),notes});
+      pos.shares-=Math.min(shares,pos.shares);
+      if(pos.shares<=0) S.portfolio.positions.splice(idx,1);
+    } else { toast('No position found to close','red'); return; }
+  } else {
+    const existing=S.portfolio.positions.find(p=>p.ticker===ticker);
+    if(existing){
+      const totalShares=existing.shares+shares;
+      existing.entry=(existing.entry*existing.shares+entry*shares)/totalShares;
+      existing.shares=totalShares;
+      existing.current=current||existing.current;
+      existing.stop=stop||existing.stop;
+      existing.t1=t1||existing.t1;
+      existing.conviction=conv;
+    } else {
+      S.portfolio.positions.push({ticker,exchange,entry,shares,current:current||entry,stop:stop||entry*0.85,t1:t1||entry*1.20,conviction:conv,notes,date:dateStr});
+    }
+    S.portfolio.history.push({date:dateStr,time:timeStr,ticker,action:'BUY',shares,price:entry,pnl:'-',notes});
+  }
+  saveState();
+  renderPortfolio();
+  updateEquityCurve();
+  toast(action+' '+shares+' '+ticker+' @ $'+entry,'green');
+}
+
+function removePosition(ticker){
+  if(!confirm('Remove '+ticker+' position?')) return;
+  const pos=S.portfolio.positions.find(p=>p.ticker===ticker);
+  if(pos){
+    const pnl=(pos.current-pos.entry)*pos.shares;
+    S.portfolio.history.push({date:new Date().toISOString().slice(0,10),time:new Date().toTimeString().slice(0,8),ticker,action:'CLOSE',shares:pos.shares,price:pos.current,pnl:pnl.toFixed(2),notes:'Manual close'});
+  }
+  S.portfolio.positions=S.portfolio.positions.filter(p=>p.ticker!==ticker);
+  saveState(); renderPortfolio(); updateEquityCurve();
+  toast('Position removed','red');
+}
+
+function updateCurrentPrice(ticker,val){
+  const pos=S.portfolio.positions.find(p=>p.ticker===ticker);
+  if(pos){ pos.current=parseFloat(val)||pos.current; saveState(); renderPortfolio(); }
+}
+
+function renderPortfolio(){
+  const tbody=document.getElementById('positions-body');
+  if(!S.portfolio.positions.length){
+    tbody.innerHTML='<tr><td colspan="13" style="text-align:center;color:#64748b;padding:20px">No positions.</td></tr>';
+  } else {
+    let totalCost=0,totalValue=0,totalPnl=0;
+    tbody.innerHTML=S.portfolio.positions.map(p=>{
+      const cost=p.entry*p.shares;
+      const value=p.current*p.shares;
+      const pnl=value-cost;
+      const pnlPct=((pnl/cost)*100).toFixed(2);
+      totalCost+=cost; totalValue+=value; totalPnl+=pnl;
+      const pnlClr=pnl>=0?'#10b981':'#ef4444';
+      const convClr=convColor(p.conviction);
+      return `<tr>
+        <td><span style="font-weight:700;color:#10b981">${p.ticker}</span></td>
+        <td><span class="tag tag-b">${p.exchange}</span></td>
+        <td>$${p.entry.toFixed(3)}</td>
+        <td><input type="number" value="${p.current.toFixed(3)}" step="0.001" onchange="updateCurrentPrice('${p.ticker}',this.value)" style="width:80px;padding:3px 6px;font-size:12px"></td>
+        <td>${p.shares}</td>
+        <td>$${cost.toFixed(0)}</td>
+        <td>$${value.toFixed(0)}</td>
+        <td style="color:${pnlClr}">${pnl>=0?'+':''}$${pnl.toFixed(0)}</td>
+        <td style="color:${pnlClr}">${pnl>=0?'+':''}${pnlPct}%</td>
+        <td style="color:#ef4444">$${(p.stop||0).toFixed(3)}</td>
+        <td style="color:#10b981">$${(p.t1||0).toFixed(3)}</td>
+        <td><span class="tag" style="background:${convClr}22;color:${convClr};border:1px solid ${convClr}44">${p.conviction}%</span></td>
+        <td><button onclick="removePosition('${p.ticker}')" class="btn btn-ghost" style="padding:3px 8px;font-size:11px">✕</button></td>
+      </tr>`;
+    }).join('');
+  }
+  // History
+  const hbody=document.getElementById('history-body');
+  if(!S.portfolio.history.length){
+    hbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#64748b;padding:16px">No trade history.</td></tr>';
+  } else {
+    hbody.innerHTML=[...S.portfolio.history].reverse().map(h=>`
+      <tr>
+        <td style="color:#64748b">${h.date} ${h.time||''}</td>
+        <td style="font-weight:700;color:#10b981">${h.ticker}</td>
+        <td><span class="tag ${h.action==='BUY'?'tag-g':'tag-r'}">${h.action}</span></td>
+        <td>${h.shares}</td>
+        <td>$${parseFloat(h.price).toFixed(3)}</td>
+        <td style="color:${parseFloat(h.pnl)>=0?'#10b981':'#ef4444'}">${h.pnl!=='-'?(parseFloat(h.pnl)>=0?'+':'')+'$'+parseFloat(h.pnl).toFixed(0):'-'}</td>
+        <td style="color:#64748b;font-size:11px">${h.notes||''}</td>
+      </tr>`).join('');
+  }
+  // Update stats
+  const invested=S.portfolio.positions.reduce((a,p)=>a+p.entry*p.shares,0);
+  const upnl=S.portfolio.positions.reduce((a,p)=>a+(p.current-p.entry)*p.shares,0);
+  document.getElementById('stat-invested').textContent='$'+Math.round(invested).toLocaleString();
+  document.getElementById('stat-positions').textContent=S.portfolio.positions.length;
+  document.getElementById('stat-upnl').textContent=(upnl>=0?'+':'')+'$'+upnl.toFixed(2);
+  document.getElementById('stat-upnl').style.color=upnl>=0?'#10b981':'#ef4444';
+  const totalVal=S.portfolio.capital+upnl;
+  document.getElementById('hdr-portfolio').textContent='$'+totalVal.toFixed(2);
+  const totalPnlPct=((upnl/S.portfolio.capital)*100).toFixed(2);
+  const pnlEl=document.getElementById('hdr-pnl');
+  pnlEl.textContent=(upnl>=0?'+':'')+'$'+upnl.toFixed(2)+' ('+totalPnlPct+'%)';
+  pnlEl.style.color=upnl>=0?'#10b981':'#ef4444';
+  // Step 10 preview
+  const s10=document.getElementById('s10-portfolio-preview');
+  if(s10) s10.innerHTML=document.getElementById('positions-body').innerHTML?
+    `<table><thead><tr><th>Ticker</th><th>Entry</th><th>Current</th><th>P&L</th><th>%Alloc</th></tr></thead><tbody>`+
+    S.portfolio.positions.map(p=>{
+      const cost=p.entry*p.shares; const alloc=((cost/S.portfolio.capital)*100).toFixed(1);
+      const pnl=(p.current-p.entry)*p.shares;
+      return `<tr><td style="color:#10b981;font-weight:700">${p.ticker}</td><td>$${p.entry.toFixed(3)}</td><td>$${p.current.toFixed(3)}</td><td style="color:${pnl>=0?'#10b981':'#ef4444'}">${pnl>=0?'+':''}$${pnl.toFixed(0)}</td><td>${alloc}%</td></tr>`;
+    }).join('')+'</tbody></table>':'<div style="color:#64748b;font-size:13px">No positions.</div>';
+}
+
+// ============================================================
+// EQUITY CURVE
+// ============================================================
+let equityChart=null;
+function updateEquityCurve(){
+  const upnl=S.portfolio.positions.reduce((a,p)=>a+(p.current-p.entry)*p.shares,0);
+  const today=new Date().toISOString().slice(0,10);
+  const last=S.equityCurve[S.equityCurve.length-1];
+  const newVal=Math.round((S.portfolio.capital+upnl)*100)/100;
+  if(last&&last.date===today){ last.value=newVal; }
+  else { S.equityCurve.push({date:today,value:newVal}); }
+  saveState();
+  renderEquityChart();
+}
+function renderEquityChart(){
+  const ctx=document.getElementById('equityChart');
+  if(!ctx) return;
+  const labels=S.equityCurve.map(e=>e.date);
+  const data=S.equityCurve.map(e=>e.value);
+  const startVal=data[0]||20000;
+  const lastVal=data[data.length-1]||20000;
+  const isUp=lastVal>=startVal;
+  if(equityChart) equityChart.destroy();
+  equityChart=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[{label:'Portfolio Value',data,borderColor:isUp?'#10b981':'#ef4444',backgroundColor:isUp?'rgba(16,185,129,.08)':'rgba(239,68,68,.08)',borderWidth:2,fill:true,tension:.3,pointRadius:3,pointBackgroundColor:isUp?'#10b981':'#ef4444'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#0d1521',borderColor:'#1a2d4a',borderWidth:1,callbacks:{label:c=>'$'+c.parsed.y.toFixed(2)}}},scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#0d1521'}},y:{ticks:{color:'#64748b',font:{size:10},callback:v=>'$'+v.toLocaleString()},grid:{color:'rgba(255,255,255,.04)'}}}}
+  });
+}
+
+// ============================================================
+// ALLOCATION CALCULATOR
+// ============================================================
+function syncAllocFromStep9(){
+  TICKERS.forEach(t=>{
+    const conv=(S.checklist.step9.perStock||{})[t]||65;
+    const sl=document.getElementById('alloc-'+t);
+    const vEl=document.getElementById('alloc-'+t+'-val');
+    if(sl){ sl.value=conv; }
+    if(vEl){ vEl.textContent=conv+'%'; }
+  });
+  calcAlloc();
+  toast('Synced from Step 9 conviction scores','green');
+}
+
+function buildAllocInputs(){
+  const c=document.getElementById('alloc-inputs');
+  c.innerHTML=TICKERS.map(t=>`
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-weight:700;color:#10b981;width:36px;font-size:13px">${t}</span>
+      <span style="font-size:11px;color:#64748b;width:30px">${EXCHANGES[t]}</span>
+      <input type="range" id="alloc-${t}" min="0" max="100" value="${(S.checklist.step9.perStock||{})[t]||65}" oninput="calcAlloc()" style="flex:1">
+      <span id="alloc-${t}-val" style="font-size:12px;color:#10b981;width:32px">${(S.checklist.step9.perStock||{})[t]||65}%</span>
+    </div>`).join('');
+  calcAlloc();
+}
+function calcAlloc(){
+  const capital=20000; const maxPerStock=capital*0.25;
+  let total=0; const allocs=[];
+  TICKERS.forEach(t=>{
+    const sl=document.getElementById('alloc-'+t);
+    const conv=sl?+sl.value:65;
+    const vEl=document.getElementById('alloc-'+t+'-val');
+    if(vEl) vEl.textContent=conv+'%';
+    const amt=conv>=80?maxPerStock:conv>=60?maxPerStock*0.6:conv>=40?maxPerStock*0.3:0;
+    allocs.push({t,conv,amt});
+    total+=amt;
+  });
+  // Normalise to 20k if exceeds
+  const scale=total>capital?capital/total:1;
+  const res=document.getElementById('alloc-result');
+  let rows=allocs.map(a=>{
+    const scaled=Math.round(a.amt*scale/100)*100;
+    const clr=convColor(a.conv);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #1a2d4a">
+      <span style="font-weight:700;color:${clr};width:36px">${a.t}</span>
+      <span class="tag" style="background:${clr}22;color:${clr};border:1px solid ${clr}44">${a.conv}%</span>
+      <span style="color:#fff;font-weight:600">$${scaled.toLocaleString()}</span>
+    </div>`;
+  }).join('');
+  const totalScaled=allocs.reduce((s,a)=>s+Math.round(a.amt*scale/100)*100,0);
+  rows+=`<div style="display:flex;justify-content:space-between;padding:6px 0;font-weight:700;color:#10b981"><span>Total Allocated</span><span>$${totalScaled.toLocaleString()}</span></div>`;
+  res.innerHTML=rows;
+}
+function calcPosition(){
+  const cap=parseFloat(document.getElementById('calc-capital').value)||20000;
+  const risk=(parseFloat(document.getElementById('calc-risk').value)||2)/100;
+  const entry=parseFloat(document.getElementById('calc-entry').value)||0;
+  const stop=parseFloat(document.getElementById('calc-stop').value)||0;
+  const res=document.getElementById('calc-result');
+  if(!entry||!stop||stop>=entry){ res.innerHTML='<span style="color:#64748b">Enter valid entry > stop price</span>'; return; }
+  const riskAmt=cap*risk;
+  const stopDist=entry-stop;
+  const stopPct=((stopDist/entry)*100).toFixed(1);
+  const shares=Math.floor(riskAmt/stopDist);
+  const position=shares*entry;
+  const positionPct=((position/cap)*100).toFixed(1);
+  res.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+      <div><span style="color:#64748b">$ at Risk:</span> <span style="color:#ef4444;font-weight:700">$${riskAmt.toFixed(0)}</span></div>
+      <div><span style="color:#64748b">Stop Distance:</span> <span style="color:#f59e0b;font-weight:700">${stopPct}%</span></div>
+      <div><span style="color:#64748b">Shares to Buy:</span> <span style="color:#10b981;font-weight:700">${shares.toLocaleString()}</span></div>
+      <div><span style="color:#64748b">Position Size:</span> <span style="color:#fff;font-weight:700">$${position.toFixed(0)}</span></div>
+      <div><span style="color:#64748b">% of Capital:</span> <span style="color:${positionPct>25?'#ef4444':'#10b981'};font-weight:700">${positionPct}%${positionPct>25?' ⚠️ EXCEEDS MAX':''}</span></div>
+    </div>`;
+}
+
+// ============================================================
+// EXECUTE CHECKLIST
+// ============================================================
+async function executeChecklist(){
+  const mode=document.getElementById('exec-mode').value||'SOD';
+  const modal=document.getElementById('exec-modal');
+  const stepsEl=document.getElementById('modal-steps');
+  const summaryEl=document.getElementById('modal-summary');
+  const closeBtn=document.getElementById('modal-close-btn');
+  document.getElementById('modal-title').textContent='⚡ Executing '+mode+' Checklist...';
+  stepsEl.innerHTML=''; summaryEl.style.display='none'; closeBtn.style.display='none';
+  modal.classList.add('open');
+
+  const stepNames=['Macro Drivers (Oil/Gas)','Money Supply & Liquidity','Policy Updates','War Escalation Score','Upcoming Catalysts','ASX Energy + OOO ETF','Individual Stock Review','Technical & Flow Analysis','Conviction Scoring','Portfolio P&L Review','Recommendations & Allocation','Entry Rules','Upside Targets','Stop-Loss Rules'];
+
+  // Animate through steps
+  for(let i=0;i<14;i++){
+    await delay(120);
+    const badge=document.getElementById('badge-'+(i+1));
+    if(badge) badge.classList.add('step-done');
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:8px;font-size:13px;opacity:0;transition:opacity .2s';
+    div.innerHTML=`<span class="checkmark">✓</span><span style="color:#94a3b8">Step ${i+1}: ${stepNames[i]}</span>`;
+    stepsEl.appendChild(div);
+    await delay(20);
+    div.style.opacity='1';
+  }
+
+  // Collect data and compute
+  collectChecklistFromDOM();
+  const conv=S.checklist.step9.overall||65;
+  const escalation=S.checklist.step4.escalationScore||50;
+  document.getElementById('stat-conviction').textContent=conv+'%';
+  document.getElementById('stat-conviction').style.color=convColor(conv);
+  document.getElementById('stat-escalation').textContent=escalation+'/100';
+
+  // Generate recommendations
+  const capital=20000; const maxPerStock=capital*0.25;
+  const recs=TICKERS.map(t=>{
+    const c=(S.checklist.step9.perStock||{})[t]||65;
+    const alloc=c>=80?maxPerStock:c>=60?Math.round(maxPerStock*0.6/500)*500:c>=40?Math.round(maxPerStock*0.3/500)*500:0;
+    return {ticker:t,exchange:EXCHANGES[t],conviction:c,allocation:alloc};
+  }).filter(r=>r.allocation>0).sort((a,b)=>b.conviction-a.conviction);
+
+  // Build recommendation table
+  const recHtml=buildRecTable(recs, conv, escalation, mode);
+  document.getElementById('rec-table-content').innerHTML=recHtml;
+  document.getElementById('s11-recs').innerHTML=recHtml;
+
+  // Action summary
+  const topRec=recs[0];
+  const summary=`<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+    <div class="checkmark">✓</div>
+    <span style="font-size:13px;font-weight:600;color:#fff">Checklist Complete · ${mode} · ${new Date().toLocaleDateString('en-AU')}</span>
+    <span class="tag tag-g">Overall: ${conv}%</span>
+    <span class="tag ${escalation>70?'tag-r':escalation>40?'tag-y':'tag-g'}">War Risk: ${escalation}/100</span>
+    ${topRec?`<span class="tag tag-g">Top Pick: ${topRec.ticker} @ $${topRec.allocation.toLocaleString()}</span>`:''}
+    <span style="font-size:12px;color:#64748b">${recs.length} positions suggested · Total: $${recs.reduce((s,r)=>s+r.allocation,0).toLocaleString()}</span>
+  </div>`;
+  document.getElementById('action-summary').innerHTML=summary;
+
+  // Modal summary
+  document.getElementById('modal-rec').innerHTML=`
+    <div style="font-size:12px;color:#94a3b8;margin-bottom:8px">Overall Conviction: <span style="color:${convColor(conv)};font-weight:700">${conv}% — ${convLabel(conv)}</span> · War Escalation: <span style="color:${escalation>70?'#ef4444':'#f59e0b'};font-weight:700">${escalation}/100</span></div>
+    ${recs.map(r=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a2d4a"><span style="color:#10b981;font-weight:700">${r.ticker}</span><span class="tag ${convClass(r.conviction)}">${r.conviction}%</span><span style="color:#fff;font-weight:600">$${r.allocation.toLocaleString()}</span></div>`).join('')}`;
+  summaryEl.style.display='block';
+  closeBtn.style.display='block';
+  document.getElementById('modal-title').textContent='✅ '+(mode==='SOD'?'Start':'End')+' of Day Checklist Complete';
+
+  // Log to journal
+  logJournalEntry(mode, conv, escalation, recs);
+  renderJournal();
+  renderRecentJournal();
+  updateEquityCurve();
+  // Auto-run AI analysis after checklist (uses freshly collected data)
+  setTimeout(()=>{ runAITrades(); }, 400);
+  toast(mode+' checklist complete ✓ · AI analysis running...','green');
+}
+
+function collectChecklistFromDOM(){
+  // Collect all input values from DOM into state
+  const fields=[
+    ['s1-brent','step1','brent'],['s1-brentChg','step1','brentChg'],
+    ['s1-ttf','step1','ttf'],['s1-ttfChg','step1','ttfChg'],
+    ['s1-jkm','step1','jkm'],['s1-jkmChg','step1','jkmChg'],
+    ['s1-notes','step1','notes'],
+    ['s2-m2','step2','m2'],['s2-fed','step2','fed'],['s2-ecb','step2','ecb'],
+    ['s2-boj','step2','boj'],['s2-pboc','step2','pboc'],['s2-notes','step2','notes'],
+    ['s2-liquidity','step2','liquidityIndex'],
+    ['s3-fed','step3','fedStatement'],['s3-ecb','step3','ecbStatement'],
+    ['s3-boj','step3','bojStatement'],['s3-rateExp','step3','rateExp'],
+    ['s3-qtPace','step3','qtPace'],['s3-notes','step3','notes'],
+    ['s4-news','step4','newsSummary'],['s4-x','step4','xHeadline'],
+    ['s4-escalation','step4','escalationScore'],['s4-sentiment','step4','sentiment'],
+    ['s4-notes','step4','notes'],
+    ['s6-xejPrice','step6','xejPrice'],['s6-xejChg','step6','xejChg'],
+    ['s6-oooPrice','step6','oooPrice'],['s6-oooNAV','step6','oooNAV'],
+    ['s6-oooPremium','step6','oooPremium'],['s6-oooVolume','step6','oooVolume'],
+    ['s6-sectorSentiment','step6','sectorSentiment'],['s6-notes','step6','notes'],
+    ['s9-overall','step9','overall'],['s8-notes','step8','notes'],
+    ['s8-dxy','step8','dxy'],['s8-yields10y','step8','yields10y'],['s8-oilCorr','step8','oilCorr']
+  ];
+  fields.forEach(([id,step,key])=>{
+    const el=document.getElementById(id);
+    if(el){ const v=el.value; if(v!=='') S.checklist[step][key]=isNaN(v)?v:+v; }
+  });
+  TICKERS.forEach(t=>{
+    ['price','chg','vol','avgVol'].forEach(k=>{
+      const el=document.getElementById('s7-'+t+'-'+k);
+      if(el&&el.value) { if(!S.checklist.step7[t]) S.checklist.step7[t]={}; S.checklist.step7[t][k]=el.value; }
+    });
+    const rsiEl=document.getElementById('s8-rsi-'+t);
+    if(rsiEl&&rsiEl.value) S.checklist.step8.rsi[t]=rsiEl.value;
+    const sl=document.getElementById('s9-'+t);
+    if(sl) S.checklist.step9.perStock[t]=+sl.value;
+    ['t1','t2','t3'].forEach(k=>{ const el=document.getElementById('s13-'+t+'-'+k); if(el&&el.value){ if(!S.checklist.step13[t]) S.checklist.step13[t]={}; S.checklist.step13[t][k]=el.value; } });
+    ['init','tight','para'].forEach(k=>{ const el=document.getElementById('s14-'+t+'-'+k); if(el&&el.value){ const mk=k+'Stop'; if(!S.checklist.step14[t]) S.checklist.step14[t]={}; S.checklist.step14[t][mk]=el.value; } });
+    ['dip','orderType'].forEach(k=>{ const el=document.getElementById('s12-'+t+'-'+k); if(el&&el.value){ if(!S.checklist.step12[t]) S.checklist.step12[t]={}; S.checklist.step12[t][k]=el.value; } });
+  });
+  saveState();
+}
+
+function buildRecTable(recs, conv, escalation, mode){
+  if(!recs.length) return '<div style="color:#64748b;font-size:13px">No positions meet conviction threshold (>40%).</div>';
+  const moodIcon=escalation>70?'🔴':escalation>40?'🟡':'🟢';
+  return `
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <div class="tag tag-g">Overall Conv: ${conv}%</div>
+      <div class="tag ${escalation>70?'tag-r':escalation>40?'tag-y':'tag-g'}">${moodIcon} War Risk: ${escalation}/100</div>
+      <div class="tag tag-b">${mode} · ${new Date().toLocaleDateString('en-AU')}</div>
+    </div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Ticker</th><th>Exchange</th><th>Conviction</th><th>Signal</th><th>Suggested $</th><th>% of $20k</th><th>Stop (-15%)</th><th>T1 (+20%)</th><th>Notes</th></tr></thead>
+      <tbody>
+      ${recs.map(r=>{
+        const entry=(S.checklist.step7[r.ticker]||{}).price||'?';
+        const stop=entry!=='?'?(entry*0.85).toFixed(3):'—';
+        const t1=entry!=='?'?(entry*1.20).toFixed(3):'—';
+        const signal=r.conviction>=80?'🟢 BUY':r.conviction>=60?'🟡 ACCUMULATE':'⚪ WATCH';
+        const pct=((r.allocation/20000)*100).toFixed(1);
+        return `<tr>
+          <td style="font-weight:700;color:#10b981">${r.ticker}</td>
+          <td><span class="tag tag-b">${r.exchange}</span></td>
+          <td><span class="tag ${convClass(r.conviction)}">${r.conviction}%</span></td>
+          <td>${signal}</td>
+          <td style="font-weight:700;color:#fff">$${r.allocation.toLocaleString()}</td>
+          <td style="color:#60a5fa">${pct}%</td>
+          <td style="color:#ef4444">${stop}</td>
+          <td style="color:#10b981">${t1}</td>
+          <td style="color:#64748b;font-size:11px">${(S.checklist.step12[r.ticker]||{}).dip?'Dip entry @ $'+(S.checklist.step12[r.ticker].dip):'Market/Limit'}</td>
+        </tr>`;
+      }).join('')}
+      <tr style="background:#060f1c">
+        <td colspan="4" style="font-weight:700;color:#fff">TOTAL</td>
+        <td style="font-weight:800;color:#10b981">$${recs.reduce((s,r)=>s+r.allocation,0).toLocaleString()}</td>
+        <td style="color:#60a5fa">${((recs.reduce((s,r)=>s+r.allocation,0)/20000)*100).toFixed(1)}%</td>
+        <td colspan="3"></td>
+      </tr>
+      </tbody>
+    </table></div>`;
+}
+
+// ============================================================
+// JOURNAL
+// ============================================================
+function logJournalEntry(mode, conv, escalation, recs){
+  const now=new Date();
+  const dateStr=new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Sydney',day:'2-digit',month:'short',year:'numeric'}).format(now);
+  const timeStr=new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(now);
+  const entry={
+    id:Date.now(),
+    date:dateStr,
+    time:timeStr,
+    type:mode,
+    conviction:conv,
+    escalation,
+    recs:recs.map(r=>({ticker:r.ticker,conviction:r.conviction,allocation:r.allocation})),
+    sentiment:S.checklist.step4.sentiment||'stable',
+    brent:S.checklist.step1.brent||'—',
+    brentChg:S.checklist.step1.brentChg||'0',
+    fedStatement:S.checklist.step3.fedStatement||'',
+    newsHeadline:S.checklist.step4.newsSummary||'',
+    positions:S.portfolio.positions.length,
+    portfolioValue:S.portfolio.capital+S.portfolio.positions.reduce((a,p)=>a+(p.current-p.entry)*p.shares,0)
+  };
+  S.journal.unshift(entry);
+  if(S.journal.length>200) S.journal.pop();
+  saveState();
+}
+
+function renderJournal(){
+  const container=document.getElementById('journal-entries');
+  const filter=document.getElementById('journal-filter').value;
+  const entries=filter==='ALL'?S.journal:S.journal.filter(e=>e.type===filter);
+  if(!entries.length){
+    container.innerHTML='<div style="color:#64748b;font-size:13px;text-align:center;padding:40px">No entries found.</div>';
+    return;
+  }
+  container.innerHTML=entries.map(e=>`
+    <div class="journal-post ${e.type==='EOD'?'eod':''}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="tag ${e.type==='SOD'?'tag-b':'tag-y'}" style="font-size:12px">${e.type==='SOD'?'☀️':'🌙'} ${e.type}</span>
+        <span style="font-size:13px;font-weight:700;color:#fff">${e.date}</span>
+        <span style="font-size:12px;color:#64748b">${e.time} AEST</span>
+        <div class="tag ${convClass(e.conviction)}">${e.conviction}% Conviction</div>
+        <div class="tag ${e.escalation>70?'tag-r':e.escalation>40?'tag-y':'tag-g'}">War: ${e.escalation}/100</div>
+        <span class="tag tag-g">Brent: $${e.brent}</span>
+      </div>
+      ${e.newsHeadline?`<div style="font-size:12px;color:#94a3b8;margin-bottom:8px;padding:6px 10px;background:#060f1c;border-radius:6px;border-left:2px solid #f59e0b">📰 ${e.newsHeadline.slice(0,200)}${e.newsHeadline.length>200?'...':''}</div>`:''}
+      <div style="font-size:12px;color:#64748b;margin-bottom:8px">Portfolio: $${Math.round(e.portfolioValue).toLocaleString()} · ${e.positions} positions</div>
+      ${e.recs&&e.recs.length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${e.recs.map(r=>`<div class="card-sm" style="padding:6px 10px;display:flex;align-items:center;gap:6px"><span style="font-weight:700;color:#10b981;font-size:12px">${r.ticker}</span><span class="tag ${convClass(r.conviction)}" style="font-size:10px">${r.conviction}%</span><span style="color:#fff;font-size:12px;font-weight:600">$${r.allocation.toLocaleString()}</span></div>`).join('')}</div>`:''}
+      ${e.fedStatement?`<div style="font-size:11px;color:#64748b">🏦 Policy: ${e.fedStatement.slice(0,120)}${e.fedStatement.length>120?'...':''}</div>`:''}
+    </div>`).join('');
+}
+
+function renderRecentJournal(){
+  const c=document.getElementById('recent-journal');
+  const recent=S.journal.slice(0,5);
+  if(!recent.length){ c.innerHTML='<div style="color:#64748b;font-size:12px;text-align:center;padding:20px">No entries yet.</div>'; return; }
+  c.innerHTML=recent.map(e=>`
+    <div style="padding:10px;border-bottom:1px solid #1a2d4a">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span class="tag ${e.type==='SOD'?'tag-b':'tag-y'}" style="font-size:10px">${e.type}</span>
+        <span style="font-size:12px;font-weight:600;color:#fff">${e.date}</span>
+        <span style="font-size:11px;color:#64748b">${e.time}</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="tag ${convClass(e.conviction)}" style="font-size:10px">${e.conviction}% conv</span>
+        <span class="tag tag-g" style="font-size:10px">Brent $${e.brent}</span>
+      </div>
+    </div>`).join('');
+}
+
+function clearJournal(){
+  if(!confirm('Clear all journal entries?')) return;
+  S.journal=[]; saveState(); renderJournal(); renderRecentJournal();
+  toast('Journal cleared','red');
+}
+
+// ============================================================
+// EXPORT CSV
+// ============================================================
+function exportCSV(){
+  const rows=[['Date','Type','Time','Conviction','Escalation','Brent','Positions','Portfolio Value','Top Recs']];
+  S.journal.forEach(e=>rows.push([e.date,e.type,e.time,e.conviction,e.escalation,e.brent,e.positions,Math.round(e.portfolioValue),(e.recs||[]).map(r=>r.ticker+'@$'+r.allocation).join('|')]));
+  // Add portfolio
+  rows.push([]);
+  rows.push(['Ticker','Exchange','Entry','Current','Shares','Cost','Value','P&L','Stop','T1','Conviction']);
+  S.portfolio.positions.forEach(p=>rows.push([p.ticker,p.exchange,p.entry,p.current,p.shares,(p.entry*p.shares).toFixed(0),(p.current*p.shares).toFixed(0),((p.current-p.entry)*p.shares).toFixed(0),p.stop,p.t1,p.conviction]));
+  const csv=rows.map(r=>r.join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='IranEnergyTradelab_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  toast('CSV exported ✓','green');
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function closeModal(){ document.getElementById('exec-modal').classList.remove('open'); }
+function toast(msg,type='green'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background=type==='green'?'#10b981':type==='red'?'#ef4444':'#f59e0b';
+  t.style.color=type==='green'?'#000':'#fff';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init(){
+  applyStoredTheme();
+  buildChecklist();
+  buildPriceCards();
+  buildAllocInputs();
+  buildStressScenarios();
+  renderPortfolio();
+  renderJournal();
+  renderRecentJournal();
+  renderWeeklyJournal();
+  renderMonthlyJournal();
+  renderEquityChart();
+  renderCommunityLeaderboard();
+  renderAIJournal();
+  // Build TradingView charts in price monitor
+  buildTVCharts(localStorage.getItem('iceTradelab_theme')==='light'?'light':'dark');
+  // Set default week-ending date to next Friday
+  const wd=document.getElementById('wr-date');
+  if(wd){ const d=new Date(); const day=d.getDay(); const diff=(5-day+7)%7||7; d.setDate(d.getDate()+diff); wd.value=d.toISOString().slice(0,10); }
+  // Set month selector to current month
+  const ml=document.getElementById('ml-month');
+  if(ml){ ml.selectedIndex=new Date().getMonth(); }
+  // Update conviction + escalation display
+  const ov=S.checklist.step9.overall||65;
+  document.getElementById('stat-conviction').textContent=ov+'%';
+  document.getElementById('stat-conviction').style.color=convColor(ov);
+  const esc=S.checklist.step4.escalationScore||50;
+  document.getElementById('stat-escalation').textContent=esc+'/100';
+  // Restore AI journal from state
+  if(S.aiJournal&&S.aiJournal.length){ renderAIJournal(); renderAIPortfolio(); }
+}
+
+// ============================================================
+// JOURNAL SUB-TABS
+// ============================================================
+function switchJTab(tab){
+  ['daily','weekly','monthly'].forEach(t=>{
+    document.getElementById('jtab-'+t).style.display=t===tab?'block':'none';
+    const btn=document.getElementById('jt-'+t);
+    if(btn){ btn.className=t===tab?'btn btn-green':'btn btn-ghost'; btn.style.flex='1'; btn.style.borderRadius='7px'; btn.style.fontSize='13px'; }
+  });
+}
+function saveWeeklyReflection(){
+  const date=document.getElementById('wr-date').value;
+  const well=document.getElementById('wr-well').value;
+  const bad=document.getElementById('wr-bad').value;
+  const lessons=document.getElementById('wr-lessons').value;
+  const pnl=document.getElementById('wr-pnl').value;
+  const score=document.getElementById('wr-score').value;
+  if(!date&&!well){ toast('Add at least a date and reflection','red'); return; }
+  if(!S.weeklyJournal) S.weeklyJournal=[];
+  const d=new Date(date||Date.now());
+  const label=d.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  S.weeklyJournal.unshift({id:Date.now(),date:label,rawDate:date||new Date().toISOString().slice(0,10),well,bad,lessons,pnl,score:+score});
+  saveState(); renderWeeklyJournal();
+  ['wr-well','wr-bad','wr-lessons','wr-pnl'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  toast('Weekly reflection saved ✓','green');
+}
+function renderWeeklyJournal(){
+  const c=document.getElementById('weekly-entries');
+  if(!S.weeklyJournal||!S.weeklyJournal.length){ c.innerHTML='<div style="color:#64748b;font-size:13px;text-align:center;padding:30px">No weekly reflections yet.</div>'; return; }
+  c.innerHTML=S.weeklyJournal.map(e=>`
+    <div class="journal-post" style="border-left-color:#3b82f6">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="tag tag-b">📆 WEEKLY</span>
+        <span style="font-size:13px;font-weight:700;color:#fff">Week Ending ${e.date}</span>
+        <span class="tag ${convClass(e.score)}">${e.score}% Score</span>
+        ${e.pnl?`<span class="tag ${parseFloat(e.pnl)>=0?'tag-g':'tag-r'}">P&L: ${parseFloat(e.pnl)>=0?'+':''}$${parseFloat(e.pnl).toFixed(0)}</span>`:''}
+        <button onclick="deleteWeekly(${e.id})" class="btn btn-ghost" style="margin-left:auto;padding:2px 8px;font-size:11px">✕</button>
+      </div>
+      ${e.well?`<div style="margin-bottom:8px"><div style="font-size:11px;color:#10b981;font-weight:600;margin-bottom:3px">✅ What went well</div><div style="font-size:13px;color:#94a3b8">${e.well}</div></div>`:''}
+      ${e.bad?`<div style="margin-bottom:8px"><div style="font-size:11px;color:#ef4444;font-weight:600;margin-bottom:3px">❌ What didn't go well</div><div style="font-size:13px;color:#94a3b8">${e.bad}</div></div>`:''}
+      ${e.lessons?`<div><div style="font-size:11px;color:#f59e0b;font-weight:600;margin-bottom:3px">💡 Key lessons</div><div style="font-size:13px;color:#94a3b8">${e.lessons}</div></div>`:''}
+    </div>`).join('');
+}
+function deleteWeekly(id){ S.weeklyJournal=S.weeklyJournal.filter(e=>e.id!==id); saveState(); renderWeeklyJournal(); }
+
+function saveMonthlyLearning(){
+  const month=document.getElementById('ml-month').value;
+  const year=document.getElementById('ml-year').value;
+  const strategy=document.getElementById('ml-strategy').value;
+  const best=document.getElementById('ml-best').value;
+  const worst=document.getElementById('ml-worst').value;
+  const rules=document.getElementById('ml-rules').value;
+  const pnl=document.getElementById('ml-pnl').value;
+  if(!strategy){ toast('Add at least a strategy assessment','red'); return; }
+  if(!S.monthlyJournal) S.monthlyJournal=[];
+  S.monthlyJournal.unshift({id:Date.now(),month,year,strategy,best,worst,rules,pnl});
+  saveState(); renderMonthlyJournal();
+  ['ml-strategy','ml-best','ml-worst','ml-rules','ml-pnl'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  toast('Monthly learning saved ✓','green');
+}
+function renderMonthlyJournal(){
+  const c=document.getElementById('monthly-entries');
+  if(!S.monthlyJournal||!S.monthlyJournal.length){ c.innerHTML='<div style="color:#64748b;font-size:13px;text-align:center;padding:30px">No monthly learnings yet.</div>'; return; }
+  c.innerHTML=S.monthlyJournal.map(e=>`
+    <div class="journal-post" style="border-left-color:#a78bfa">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="tag tag-b" style="background:rgba(167,139,250,.2);color:#a78bfa;border-color:rgba(167,139,250,.3)">📅 MONTHLY</span>
+        <span style="font-size:14px;font-weight:700;color:#fff">${e.month} ${e.year}</span>
+        ${e.pnl?`<span class="tag ${parseFloat(e.pnl)>=0?'tag-g':'tag-r'}">P&L: ${parseFloat(e.pnl)>=0?'+':''}$${parseFloat(e.pnl).toFixed(0)}</span>`:''}
+        <button onclick="deleteMonthly(${e.id})" class="btn btn-ghost" style="margin-left:auto;padding:2px 8px;font-size:11px">✕</button>
+      </div>
+      ${e.strategy?`<div style="margin-bottom:8px"><div style="font-size:11px;color:#60a5fa;font-weight:600;margin-bottom:3px">🗺 Strategy Assessment</div><div style="font-size:13px;color:#94a3b8">${e.strategy}</div></div>`:''}
+      ${e.best?`<div style="margin-bottom:8px"><div style="font-size:11px;color:#10b981;font-weight:600;margin-bottom:3px">🏆 Best Trade</div><div style="font-size:13px;color:#94a3b8">${e.best}</div></div>`:''}
+      ${e.worst?`<div style="margin-bottom:8px"><div style="font-size:11px;color:#ef4444;font-weight:600;margin-bottom:3px">📉 Worst Trade / Mistake</div><div style="font-size:13px;color:#94a3b8">${e.worst}</div></div>`:''}
+      ${e.rules?`<div><div style="font-size:11px;color:#f59e0b;font-weight:600;margin-bottom:3px">📐 Rule Improvements</div><div style="font-size:13px;color:#94a3b8">${e.rules}</div></div>`:''}
+    </div>`).join('');
+}
+function deleteMonthly(id){ S.monthlyJournal=S.monthlyJournal.filter(e=>e.id!==id); saveState(); renderMonthlyJournal(); }
+
+// ============================================================
+// STRESS TEST SCENARIOS
+// ============================================================
+const STRESS_SCENARIOS=[
+  {
+    id:'embargo1973',
+    name:'1973 Arab Oil Embargo',
+    period:'Oct 1973 – Mar 1974',
+    trigger:'OPEC Arab members embargo oil exports to USA/West in retaliation for Yom Kippur War support of Israel.',
+    oilChange:+400,
+    energyStockChange:+180,
+    asx_change:+80,
+    duration_months:6,
+    colour:'#f59e0b',
+    outcome:'Brent equivalent surged from ~$3 → $12/bbl. First modern oil shock. ASX energy stocks soared. Stagflation followed.',
+    lessons:'Energy stocks can 10x in extreme supply shocks. Hold conviction through volatility. Fear is your entry signal.',
+    volatility:'EXTREME'
+  },
+  {
+    id:'iran1979',
+    name:'1979 Iranian Revolution',
+    period:'Nov 1978 – Jun 1979',
+    trigger:'Islamic Revolution in Iran. Iranian oil production collapses from 6mb/d to near zero. Second oil shock.',
+    oilChange:+130,
+    energyStockChange:+90,
+    asx_change:+60,
+    duration_months:8,
+    colour:'#ef4444',
+    outcome:'Oil from ~$14 → $35/bbl. Iran-Iraq War followed 1980, adding further supply disruption.',
+    lessons:'Regime change = sustained supply disruption. Multiple shock waves. OXY, FRO surged. Long energy through political chaos.',
+    volatility:'HIGH'
+  },
+  {
+    id:'iraniraqwar1980',
+    name:'Iran–Iraq War (1980–88)',
+    period:'Sep 1980 – Aug 1988',
+    trigger:'Iraq invades Iran. Both countries attack each other\'s oil infrastructure. Tanker War phase 1984-88.',
+    oilChange:+60,
+    energyStockChange:+50,
+    asx_change:+35,
+    duration_months:96,
+    colour:'#ef4444',
+    outcome:'Sustained 8-year elevated oil prices. FRO (tanker stocks) were volatile. Energy producers maintained premium valuations.',
+    lessons:'Long duration conflicts create long duration energy premiums. Tanker stocks spike on "Tanker War" events. FRO analogue.',
+    volatility:'SUSTAINED'
+  },
+  {
+    id:'gulfwar1990',
+    name:'Gulf War / Desert Storm',
+    period:'Aug 1990 – Mar 1991',
+    trigger:'Iraq invades Kuwait. Coalition forces respond. Kuwait oil fields set ablaze. Strait of Hormuz threat.',
+    oilChange:+135,
+    energyStockChange:+70,
+    asx_change:+55,
+    duration_months:7,
+    colour:'#f97316',
+    outcome:'Oil doubled Aug-Oct 1990 then crashed when coalition won quickly. Sharp spike then reversal. Classic "buy rumour sell fact".',
+    lessons:'Gulf War was a spike-and-reverse. Desert Storm = fastest possible resolution. Know escalation cycle. PDN/WDS analogue on spike.',
+    volatility:'HIGH'
+  },
+  {
+    id:'iraqwar2003',
+    name:'Iraq War 2003',
+    period:'Mar – May 2003',
+    trigger:'US-led coalition invades Iraq. Oil supply fears. Saddam Hussein sets oil fields ablaze.',
+    oilChange:+30,
+    energyStockChange:+20,
+    asx_change:+15,
+    duration_months:3,
+    colour:'#f59e0b',
+    outcome:'Muted spike vs 1991. Iraq back to production quickly. Markets saw it as "controlled conflict". XEJ only modest move.',
+    lessons:'Priced-in wars don\'t spike as hard. Market already positioned. Late entries hurt. Watch conviction vs escalation score spread.',
+    volatility:'MODERATE'
+  },
+  {
+    id:'hormuz2012',
+    name:'Iran Hormuz Closure Threat 2012',
+    period:'Jan – Mar 2012',
+    trigger:'Iran threatens to close Strait of Hormuz in response to Western sanctions. ~20% world oil transits Hormuz.',
+    oilChange:+20,
+    energyStockChange:+18,
+    asx_change:+12,
+    duration_months:3,
+    colour:'#f59e0b',
+    outcome:'Brent hit $128. FRO and tanker stocks spiked 15-20%. WDS, KAR both lifted. Threat not executed — spike reversed.',
+    lessons:'This is THE analogue for current Energy Supply Shock trade. Threat = spike. Actual closure = massive sustained move. FRO/OXY most sensitive.',
+    volatility:'MODERATE',
+    highlight:true
+  },
+  {
+    id:'covid2020',
+    name:'COVID Crash + Oil Price War 2020',
+    period:'Feb – Apr 2020',
+    trigger:'COVID lockdowns destroy demand. Saudi Arabia and Russia launch oil price war. WTI briefly goes negative.',
+    oilChange:-70,
+    energyStockChange:-65,
+    asx_change:-55,
+    duration_months:3,
+    colour:'#10b981',
+    outcome:'Worst demand shock in history. Energy stocks crashed 50-80%. WDS fell 60%. But recovery was the best energy bull run ever (2021-22).',
+    lessons:'OPPOSITE of Iran conflict thesis. But shows importance of stop losses. Our 15% stop would have saved capital for the recovery.',
+    volatility:'EXTREME'
+  },
+  {
+    id:'ukraine2022',
+    name:'Russia–Ukraine War 2022',
+    period:'Feb – Jun 2022',
+    trigger:'Russia invades Ukraine. Western sanctions on Russian energy. Europe scrambles for LNG alternatives.',
+    oilChange:+65,
+    energyStockChange:+80,
+    asx_change:+55,
+    duration_months:5,
+    colour:'#f97316',
+    outcome:'Brent hit $139. WDS surged 40%+ as LNG demand surged. OOO peaked near NAV premium. ASX energy sector best performer of 2022.',
+    lessons:'THIS is the closest analogue to Iran conflict thesis: supply disruption → LNG demand → WDS/KAR surge. Follow this playbook.',
+    volatility:'HIGH',
+    highlight:true
+  }
+];
+
+function buildStressScenarios(){
+  const c=document.getElementById('stress-scenarios');
+  c.innerHTML=STRESS_SCENARIOS.map(s=>`
+    <div class="card" style="border-left:3px solid ${s.colour};${s.highlight?'box-shadow:0 0 15px rgba(16,185,129,.2);border-color:#10b981':''}">
+      ${s.highlight?'<div class="tag tag-g" style="margin-bottom:8px;font-size:10px">🎯 KEY ANALOGUE</div>':''}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#fff">${s.name}</div>
+          <div style="font-size:11px;color:#64748b">${s.period}</div>
+        </div>
+        <span class="tag ${s.volatility==='EXTREME'?'tag-r':s.volatility==='HIGH'?'tag-y':s.volatility==='SUSTAINED'?'tag-b':'tag-g'}" style="white-space:nowrap">${s.volatility}</span>
+      </div>
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:10px">${s.trigger}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+        <div class="card-sm" style="text-align:center;padding:8px">
+          <div style="font-size:10px;color:#64748b">Oil Chg</div>
+          <div style="font-size:15px;font-weight:800;color:${s.oilChange>0?'#10b981':'#ef4444'}">${s.oilChange>0?'+':''}${s.oilChange}%</div>
+        </div>
+        <div class="card-sm" style="text-align:center;padding:8px">
+          <div style="font-size:10px;color:#64748b">Energy Stks</div>
+          <div style="font-size:15px;font-weight:800;color:${s.energyStockChange>0?'#10b981':'#ef4444'}">${s.energyStockChange>0?'+':''}${s.energyStockChange}%</div>
+        </div>
+        <div class="card-sm" style="text-align:center;padding:8px">
+          <div style="font-size:10px;color:#64748b">ASX Energy</div>
+          <div style="font-size:15px;font-weight:800;color:${s.asx_change>0?'#10b981':'#ef4444'}">${s.asx_change>0?'+':''}${s.asx_change}%</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;padding:6px 8px;background:#060f1c;border-radius:6px">${s.outcome}</div>
+      <div style="font-size:11px;color:#f59e0b;margin-bottom:10px">💡 ${s.lessons}</div>
+      <button onclick="applyStressToPortfolio('${s.id}')" class="btn btn-outline" style="width:100%;font-size:12px">▶ Apply to My Portfolio</button>
+    </div>`).join('');
+}
+
+function applyStressToPortfolio(scenarioId){
+  const s=STRESS_SCENARIOS.find(x=>x.id===scenarioId);
+  if(!s) return;
+  const positions=S.portfolio.positions;
+  const capital=20000;
+  const container=document.getElementById('stress-portfolio-result');
+  if(!positions.length){
+    container.innerHTML=`
+      <div style="background:#060f1c;border:1px solid #1a2d4a;border-radius:8px;padding:16px">
+        <div style="font-size:14px;font-weight:700;color:#f59e0b;margin-bottom:8px">📊 ${s.name} — Simulated on $20k Conviction-Weighted Portfolio</div>
+        <div style="color:#64748b;font-size:13px;margin-bottom:12px">No live positions. Showing simulation on conviction-weighted allocation.</div>
+        ${buildStressSimulation(s,null)}
+      </div>`;
+  } else {
+    container.innerHTML=`
+      <div style="background:#060f1c;border:1px solid #1a2d4a;border-radius:8px;padding:16px">
+        <div style="font-size:14px;font-weight:700;color:#f59e0b;margin-bottom:12px">📊 ${s.name} Applied to Current Positions</div>
+        ${buildStressSimulation(s,positions)}
+      </div>`;
+  }
+  container.scrollIntoView({behavior:'smooth'});
+}
+
+function buildStressSimulation(s,positions){
+  const factor=(100+s.energyStockChange)/100;
+  const oilFactor=(100+s.oilChange)/100;
+  let rows=''; let totalCost=0; let totalStressValue=0;
+
+  if(positions&&positions.length){
+    rows=positions.map(p=>{
+      const cost=p.entry*p.shares;
+      const stressPrice=p.entry*factor;
+      const stressValue=stressPrice*p.shares;
+      const stressPnl=stressValue-cost;
+      totalCost+=cost; totalStressValue+=stressValue;
+      return `<tr>
+        <td style="font-weight:700;color:#10b981">${p.ticker}</td>
+        <td>$${p.entry.toFixed(3)}</td>
+        <td>$${stressPrice.toFixed(3)}</td>
+        <td>${p.shares}</td>
+        <td>$${cost.toFixed(0)}</td>
+        <td>$${stressValue.toFixed(0)}</td>
+        <td style="color:${stressPnl>=0?'#10b981':'#ef4444'};font-weight:700">${stressPnl>=0?'+':''}$${stressPnl.toFixed(0)}</td>
+      </tr>`;
+    }).join('');
+  } else {
+    // Simulate conviction-weighted allocation
+    const allocs=TICKERS.map(t=>{ const c=(S.checklist.step9.perStock||{})[t]||65; const amt=c>=80?5000:c>=60?3000:c>=40?1500:0; return {t,c,amt}; });
+    totalCost=allocs.reduce((s,a)=>s+a.amt,0)||20000;
+    rows=allocs.filter(a=>a.amt>0).map(a=>{
+      const stressVal=a.amt*factor;
+      const pnl=stressVal-a.amt;
+      totalStressValue+=stressVal;
+      return `<tr>
+        <td style="font-weight:700;color:#10b981">${a.t}</td>
+        <td>—</td><td>—</td><td>—</td>
+        <td>$${a.amt.toLocaleString()}</td>
+        <td>$${Math.round(stressVal).toLocaleString()}</td>
+        <td style="color:${pnl>=0?'#10b981':'#ef4444'};font-weight:700">${pnl>=0?'+':''}$${pnl.toFixed(0)}</td>
+      </tr>`;
+    }).join('');
+    if(!rows) { totalCost=20000; totalStressValue=20000*factor; rows=`<tr><td colspan="7" style="text-align:center;color:#64748b">Using full $20k capital, energy multiplier ${factor.toFixed(2)}x</td></tr>`; }
+  }
+  const totalPnl=totalStressValue-totalCost;
+  const totalPct=((totalPnl/totalCost)*100).toFixed(1);
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:14px">
+      <div class="card-sm" style="text-align:center"><div style="font-size:10px;color:#64748b">Oil Price Impact</div><div style="font-size:16px;font-weight:700;color:${s.oilChange>0?'#10b981':'#ef4444'}">${s.oilChange>0?'+':''}${s.oilChange}%</div></div>
+      <div class="card-sm" style="text-align:center"><div style="font-size:10px;color:#64748b">Energy Stocks</div><div style="font-size:16px;font-weight:700;color:${s.energyStockChange>0?'#10b981':'#ef4444'}">${s.energyStockChange>0?'+':''}${s.energyStockChange}%</div></div>
+      <div class="card-sm" style="text-align:center"><div style="font-size:10px;color:#64748b">Stress P&L</div><div style="font-size:16px;font-weight:700;color:${totalPnl>=0?'#10b981':'#ef4444'}">${totalPnl>=0?'+':''}$${Math.round(totalPnl).toLocaleString()}</div></div>
+      <div class="card-sm" style="text-align:center"><div style="font-size:10px;color:#64748b">Portfolio Return</div><div style="font-size:16px;font-weight:700;color:${totalPnl>=0?'#10b981':'#ef4444'}">${totalPnl>=0?'+':''}${totalPct}%</div></div>
+      <div class="card-sm" style="text-align:center"><div style="font-size:10px;color:#64748b">Duration</div><div style="font-size:16px;font-weight:700;color:#60a5fa">${s.duration_months}mo</div></div>
+    </div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Ticker</th><th>Entry</th><th>Stress Price</th><th>Shares</th><th>Cost</th><th>Stress Value</th><th>Stress P&L</th></tr></thead>
+      <tbody>${rows}
+        <tr style="background:#060f1c;font-weight:700"><td colspan="4">TOTAL</td>
+          <td>$${Math.round(totalCost).toLocaleString()}</td>
+          <td>$${Math.round(totalStressValue).toLocaleString()}</td>
+          <td style="color:${totalPnl>=0?'#10b981':'#ef4444'}">${totalPnl>=0?'+':''}$${Math.round(totalPnl).toLocaleString()}</td></tr>
+      </tbody></table></div>
+    <div style="font-size:12px;color:#f59e0b;margin-top:10px;padding:8px 10px;background:#060f1c;border-radius:6px;border-left:2px solid #f59e0b">
+      💡 ${s.lessons}
+    </div>`;
+}
+
+function runCustomStress(){
+  const name=document.getElementById('cs-name').value||'Custom Scenario';
+  const oil=parseFloat(document.getElementById('cs-oil').value)||0;
+  const energy=parseFloat(document.getElementById('cs-energy').value)||0;
+  const dur=parseInt(document.getElementById('cs-duration').value)||1;
+  const custom={id:'custom',name,oilChange:oil,energyStockChange:energy,asx_change:energy*0.7,duration_months:dur,trigger:'Custom user scenario',outcome:'',lessons:'Custom scenario — define your own thesis.',volatility:'CUSTOM',colour:'#a78bfa'};
+  document.getElementById('custom-stress-result').innerHTML=`
+    <div style="background:#060f1c;border:1px solid #1a2d4a;border-radius:8px;padding:14px">
+      <div style="font-size:14px;font-weight:700;color:#a78bfa;margin-bottom:10px">📊 ${name} — Custom Simulation</div>
+      ${buildStressSimulation(custom,S.portfolio.positions.length?S.portfolio.positions:null)}
+    </div>`;
+}
+
+// ============================================================
+// CONFIG — set your Formspree endpoint here
+// ============================================================
+const FORMSPREE_ENDPOINT = 'https://formspree.io/f/YOUR_FORM_ID'; // replace with your endpoint
+
+// ============================================================
+// LIVE PRICE FETCH (Yahoo Finance via CORS proxy)
+// ============================================================
+const YAHOO_SYMBOLS = 'BZ=F,CL=F,NG=F,HO=F,WDS.AX,KAR.AX,DRO.AX,PDN.AX,OOO.AX,OXY,FRO';
+let livepriceRefreshTimer = null;
+
+async function fetchLivePrices(){
+  try {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${YAHOO_SYMBOLS}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketChange`;
+    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxy, {signal: AbortSignal.timeout(8000)});
+    const outer = await res.json();
+    const data = JSON.parse(outer.contents);
+    const quotes = data?.quoteResponse?.result || [];
+    quotes.forEach(q => updateTickerItem(q));
+    // Sync key commodities into checklist step1
+    const brent = quotes.find(q=>q.symbol==='BZ=F');
+    const wti = quotes.find(q=>q.symbol==='CL=F');
+    if(brent){ S.checklist.step1.brent = brent.regularMarketPrice?.toFixed(2)||S.checklist.step1.brent; S.checklist.step1.brentChg = brent.regularMarketChangePercent?.toFixed(2)||S.checklist.step1.brentChg; }
+    // Sync stock prices into step7
+    const symMap={'WDS.AX':'WDS','KAR.AX':'KAR','DRO.AX':'DRO','PDN.AX':'PDN','OOO.AX':'OOO','OXY':'OXY','FRO':'FRO'};
+    quotes.forEach(q=>{ const t=symMap[q.symbol]; if(t){ if(!S.checklist.step7[t]) S.checklist.step7[t]={}; S.checklist.step7[t].price=(q.regularMarketPrice||'').toString(); S.checklist.step7[t].chg=(q.regularMarketChangePercent?.toFixed(2)||'').toString(); if(S.prices[t]) S.prices[t]={price:q.regularMarketPrice?.toFixed(3)||'',chg:q.regularMarketChangePercent?.toFixed(2)||''}; } });
+    saveState();
+    document.getElementById('stat-escalation').title='Live prices synced '+new Date().toLocaleTimeString('en-AU',{timeZone:'Australia/Sydney'});
+  } catch(e){
+    console.warn('Live price fetch failed (CORS/network):', e.message);
+  }
+}
+
+function updateTickerItem(q){
+  const chg = q.regularMarketChangePercent || 0;
+  const price = q.regularMarketPrice || 0;
+  const clr = chg >= 0 ? '#10b981' : '#ef4444';
+  const sign = chg >= 0 ? '+' : '';
+  const text = `$${price.toFixed(2)} <span style="color:${clr}">${sign}${chg.toFixed(2)}%</span>`;
+  const idMap = {'BZ=F':'t-brent','CL=F':'t-wti','NG=F':'t-gas','HO=F':'t-ho','WDS.AX':'tv-wds','KAR.AX':'tv-kar','DRO.AX':'tv-dro','PDN.AX':'tv-pdn','OOO.AX':'tv-ooo','OXY':'tv-oxy','FRO':'tv-fro'};
+  const id2Map= {'BZ=F':'t-brent2','CL=F':'t-wti2','NG=F':'t-gas2','HO=F':'t-ho2','WDS.AX':'tv-wds2','KAR.AX':'tv-kar2','OOO.AX':'tv-ooo2','OXY':'tv-oxy2','FRO':'tv-fro2'};
+  const el=document.getElementById(idMap[q.symbol]);
+  if(el){el.innerHTML=text.replace('$','').trim(); el.style.color=clr;}
+  const el2=document.getElementById(id2Map[q.symbol]);
+  if(el2){el2.innerHTML=text.replace('$','').trim(); el2.style.color=clr;}
+}
+
+function startPriceRefresh(){ fetchLivePrices(); clearInterval(livepriceRefreshTimer); livepriceRefreshTimer=setInterval(fetchLivePrices,60000); }
+
+// ============================================================
+// INFO MODAL SYSTEM
+// ============================================================
+const INFO = {
+  conviction: {
+    title: '🎯 Conviction Score — What It Means',
+    body: `<strong style="color:#10b981">Conviction Score (0–100%)</strong> is your overall confidence in the current trade thesis based on all 14 checklist steps.<br><br>
+    <strong style="color:#10b981">80–100% (GREEN — HIGH):</strong> All drivers aligned. Strong buy signal. Allocate up to $5,000 per position.<br>
+    <strong style="color:#f59e0b">60–79% (YELLOW — MEDIUM):</strong> Most drivers positive, some uncertainty. Allocate $2,000–3,000 per position.<br>
+    <strong style="color:#ef4444">0–59% (RED — LOW):</strong> Mixed or negative signals. Hold cash, watch only. Max $1,000 if entering at all.<br><br>
+    <em>How to set it:</em> In Step 9 of the Checklist, move the sliders for each stock and the overall score. The AI Trade Engine also auto-calculates conviction from all inputs.`
+  },
+  escalation: {
+    title: '⚔️ War Escalation Score — What It Means',
+    body: `<strong style="color:#ef4444">Escalation Score (0–100)</strong> measures how severe the Iran conflict situation is today, specifically relating to the Strait of Hormuz — the world's most critical oil chokepoint.<br><br>
+    <strong>0–30 → DE-ESCALATING 🟢</strong> — Diplomatic talks, ceasefires, sanctions relief. Oil premium fades.<br>
+    <strong>31–60 → STABLE 🟡</strong> — Low-level conflict, sanctions in place. Moderate oil premium (+5–15%).<br>
+    <strong>61–80 → ESCALATING 🔴</strong> — Strikes, tanker seizures, military buildup. Oil +20–40% possible.<br>
+    <strong>81–100 → FULL CRISIS ⚠️</strong> — Hormuz closure threat/actual. Oil could double. Maximum position.<br><br>
+    <em>The Strait of Hormuz carries ~21 million barrels/day — 21% of global oil consumption. Any closure is immediately bullish for WDS, KAR, OXY, FRO.</em>`
+  },
+  aitrades: {
+    title: '🤖 AI Paper Trading Engine — How It Works',
+    body: `The AI Trade Engine is a <strong style="color:#10b981">rule-based decision system</strong> that reads all your Step 1–9 checklist inputs and applies the 14-step trading rules automatically.<br><br>
+    <strong>It considers:</strong><br>
+    • Conviction score per stock (Step 9)<br>
+    • War escalation level (Step 4)<br>
+    • Brent oil price & direction (Step 1)<br>
+    • RSI overbought/oversold signals (Step 8)<br>
+    • EMA status — golden/death cross (Step 8)<br>
+    • Global liquidity trend (Step 2)<br>
+    • Daily price change momentum (Step 7)<br><br>
+    <strong>Output:</strong> BUY / ACCUMULATE / HOLD / AVOID with a probability score, suggested position size, stop loss, and T1/T2 targets.<br><br>
+    The AI trades in a separate $20k paper portfolio so you can compare your decisions vs the rules-based system.`
+  },
+  aisignals: {
+    title: '📊 AI Signal Definitions',
+    body: `<strong style="color:#10b981">BUY (Score 80+):</strong> All major factors aligned. Full position — up to $5,000. Enter at market or set limit at dip price from Step 12.<br><br>
+    <strong style="color:#60a5fa">ACCUMULATE (65–79):</strong> Mostly positive but one factor weak (e.g., RSI elevated). Half position now, add on dip.<br><br>
+    <strong style="color:#f59e0b">HOLD/WATCH (50–64):</strong> Mixed signals. No new entry. Monitor for improvement. If already in: hold, tighten stop.<br><br>
+    <strong style="color:#ef4444">AVOID (&lt;50):</strong> Negative setup. Stay out or exit existing position at next resistance level.<br><br>
+    <strong style="color:#a78bfa">Probability %:</strong> The AI's confidence level in the signal, based on how many factors are aligned vs total possible factors. Above 70% = high confidence.`
+  },
+  community: {
+    title: '👥 Community Leaderboard — How It Works',
+    body: `The leaderboard shows paper trading performance across all users of this tool, starting from <strong style="color:#10b981">23 March 2026</strong>.<br><br>
+    <strong>How to appear:</strong> Click "Share Your Performance" and submit your alias + email. Your current portfolio snapshot is submitted.<br><br>
+    <strong>Privacy:</strong> Only your alias (not full name/email) is shown publicly. Email is used only for journal delivery.<br><br>
+    <strong>Note:</strong> This is paper trading only. All P&L figures are simulated. Not financial advice.<br><br>
+    <strong>For real-time community sync:</strong> Connect a Formspree endpoint in the settings (see Setup Guide on the Community tab). Submissions will be collected in your Formspree dashboard.`
+  },
+  stresstest: {
+    title: '⚡ Stress Test — How to Use It',
+    body: `The Stress Test applies historical oil crisis price multipliers to your current portfolio to show <em>what would have happened</em> in each scenario.<br><br>
+    <strong>How to read results:</strong><br>
+    • <strong>Oil Chg %</strong> = how much oil moved during this crisis<br>
+    • <strong>Energy Stocks %</strong> = typical ASX energy stock move (not exact — varies by stock)<br>
+    • <strong>Stress P&L</strong> = estimated P&L on your current positions if this scenario repeated<br><br>
+    <strong>Key analogues for Energy Supply Shock thesis:</strong><br>
+    🎯 <strong>Iran Hormuz Threat 2012</strong> — Most direct analogue. Brent hit $128. FRO, OXY surged.<br>
+    🎯 <strong>Russia-Ukraine 2022</strong> — Best ASX energy analogue. WDS +40%, OOO premium spiked.<br><br>
+    <strong>Use it to:</strong> Size positions correctly for each escalation level. If 1973-style crisis = portfolio +150%, you know high conviction is justified.`
+  }
+};
+
+function showInfo(topic){
+  const info = INFO[topic];
+  if(!info) return;
+  document.getElementById('info-title').textContent = info.title;
+  document.getElementById('info-body').innerHTML = info.body;
+  document.getElementById('info-modal').classList.add('open');
+}
+function closeInfoModal(){ document.getElementById('info-modal').classList.remove('open'); }
+
+// ============================================================
+// SUBSCRIBE MODAL
+// ============================================================
+function openSubscribeModal(){ document.getElementById('subscribe-modal').classList.add('open'); }
+function closeSubscribeModal(){ document.getElementById('subscribe-modal').classList.remove('open'); }
+
+async function submitSubscription(){
+  const email = document.getElementById('sub-email').value.trim();
+  const name = document.getElementById('sub-name').value.trim() || 'Anonymous';
+  const daily = document.getElementById('sub-daily').checked;
+  const weekly = document.getElementById('sub-weekly').checked;
+  const monthly = document.getElementById('sub-monthly').checked;
+  if(!email || !email.includes('@')){ toast('Please enter a valid email address','red'); return; }
+  const types = [daily?'Daily':'', weekly?'Weekly':'', monthly?'Monthly':''].filter(Boolean).join(', ');
+  const res = document.getElementById('sub-result');
+  res.style.display = 'block';
+  res.innerHTML = '<div style="color:#f59e0b;font-size:13px">⏳ Submitting...</div>';
+  try {
+    if(FORMSPREE_ENDPOINT.includes('YOUR_FORM_ID')){
+      // Formspree not configured — save locally and show mailto fallback
+      if(!S.subscribers) S.subscribers = [];
+      S.subscribers.push({name, email, types, date: new Date().toISOString().slice(0,10)});
+      saveState();
+      res.innerHTML = `<div style="background:rgba(16,185,129,.1);border:1px solid #10b981;border-radius:8px;padding:12px;font-size:13px;color:#10b981">✅ Saved locally! To enable real email delivery, set up Formspree (see Community → Setup Guide).<br><br>
+        <a href="mailto:${email}?subject=Iran%20Conflict%20Energy%20Trade%20Lab%20-%20Subscription%20Confirmed&body=Hi%20${encodeURIComponent(name)},%0A%0AYou're%20subscribed%20to%20the%20Iran%20Conflict%20Energy%20Trade%20Lab%20journal.%0A%0AYou'll%20receive:%20${encodeURIComponent(types)}%0A%0ANote:%20This%20is%20paper%20trading%20only.%20Not%20financial%20advice." style="color:#60a5fa">📧 Send confirmation email manually →</a></div>`;
+      document.getElementById('comm-members').textContent = (S.subscribers.length + 11).toString();
+      toast('Subscribed! Set up Formspree for auto-delivery','green');
+    } else {
+      const formData = new FormData();
+      formData.append('email', email); formData.append('name', name); formData.append('subscriptions', types); formData.append('_subject', 'New subscriber: Energy Trade Lab');
+      const r = await fetch(FORMSPREE_ENDPOINT, {method:'POST', body: formData, headers:{'Accept':'application/json'}});
+      if(r.ok){
+        res.innerHTML = '<div style="background:rgba(16,185,129,.1);border:1px solid #10b981;border-radius:8px;padding:12px;font-size:13px;color:#10b981">✅ Subscribed! Check your inbox for confirmation.</div>';
+        toast('Subscribed successfully ✓','green');
+      } else { throw new Error('Formspree error'); }
+    }
+  } catch(e){ res.innerHTML = '<div style="color:#ef4444;font-size:13px">❌ Error. Please try again or use the mailto link above.</div>'; }
+}
+
+// ============================================================
+// AI PAPER TRADING ENGINE
+// ============================================================
+let aiPortfolio = { capital: 20000, positions: [], history: [] };
+
+function computeAIDecisions(){
+  // ── Macro inputs ──────────────────────────────────────────────────────────
+  const brent     = parseFloat(S.checklist.step1.brent)    || 107.62;
+  const brentChg  = parseFloat(S.checklist.step1.brentChg) || 1.14;
+  const wtiPrice  = parseFloat(S.prices.wti)   || brent * 0.92;
+  const gasPrice  = parseFloat(S.prices.gas)   || 3.08;
+  const gasChg    = parseFloat(S.prices.gasChg)|| 0;
+  const lngPrice  = parseFloat(S.prices.jkm)   || 13.0;
+  const lngChg    = parseFloat(S.prices.jkmChg)|| 0;
+  const ttfPrice  = parseFloat(S.prices.ttf)   || 35.0;
+  const escalation= parseInt(S.checklist.step4.escalationScore) || 50;
+  const sentiment = S.checklist.step4.sentiment || 'stable';
+  const liquidity = parseInt(S.checklist.step2.liquidityIndex)  || 50;
+  const overall   = parseInt(S.checklist.step9.overall)         || 65;
+  const rateExp   = S.checklist.step3.rateExp || 'hold';
+  const spread    = brent - wtiPrice; // Brent-WTI spread (tanker / refinery signal)
+
+  // ── Macro signal labels ───────────────────────────────────────────────────
+  const macroReasons = [];
+  if(brentChg > 1.5)  macroReasons.push(`Brent +${brentChg}% momentum`);
+  if(brentChg < -2)   macroReasons.push(`Brent ${brentChg}% headwind`);
+  if(brent > 100)     macroReasons.push(`Brent >$100 elevated`);
+  if(gasPrice > 3.5)  macroReasons.push(`Nat Gas $${gasPrice} — tight supply`);
+  if(lngPrice > 15)   macroReasons.push(`JKM LNG $${lngPrice} — premium`);
+  if(lngPrice > 15 || ttfPrice > 40) macroReasons.push('LNG/TTF elevated → WDS/KAR premium');
+  if(spread > 4)      macroReasons.push(`Brent-WTI spread $${spread.toFixed(1)} wide → tanker uplift`);
+
+  return TICKERS.map(ticker => {
+    const conv    = parseInt((S.checklist.step9.perStock || {})[ticker]) || overall;
+    const rsi     = parseFloat(((S.checklist.step8 || {}).rsi  || {})[ticker]) || 50;
+    const price   = parseFloat(((S.checklist.step7 || {})[ticker] || {}).price) || 0;
+    const chg     = parseFloat(((S.checklist.step7 || {})[ticker] || {}).chg)   || 0;
+    const vol     = parseFloat(((S.checklist.step7 || {})[ticker] || {}).vol)   || 0;
+    const avgVol  = parseFloat(((S.checklist.step7 || {})[ticker] || {}).avgVol)|| 0;
+    const above50 = (((S.checklist.step8 || {}).ema || {})[ticker] || {}).above50 || false;
+    const golden  = (((S.checklist.step8 || {}).ema || {})[ticker] || {}).golden  || false;
+    const volRatio= (vol > 0 && avgVol > 0) ? vol / avgVol : 1;
+
+    let score = 0; let reasons = [];
+
+    // ── 1. Your conviction (35% weight) ──────────────────────────────────
+    score += conv * 0.35;
+    reasons.push(`Conviction ${conv}%`);
+
+    // ── 2. Iran escalation (25% weight) ──────────────────────────────────
+    if(escalation > 65){
+      score += (escalation - 50) * 0.28;
+      reasons.push(`Iran escalation ${escalation}/100 → energy bullish`);
+    } else if(escalation < 35){
+      score -= 8;
+      reasons.push('Low war risk — thesis weakening');
+    }
+
+    // ── 3. Oil price action ───────────────────────────────────────────────
+    if(brentChg > 1.5)  { score += 7; reasons.push(`Brent +${brentChg}% momentum`); }
+    else if(brentChg < -2){ score -= 10; reasons.push(`Brent ${brentChg}% headwind`); }
+    if(brent > 110)       { score += 8; reasons.push('Brent >$110 — high regime'); }
+    else if(brent > 100)  { score += 5; reasons.push('Brent >$100 — elevated'); }
+    else if(brent < 80)   { score -= 6; reasons.push('Brent <$80 — thesis challenged'); }
+
+    // ── 4. LNG & Gas — sector specific ────────────────────────────────────
+    if(['WDS','KAR','PDN'].includes(ticker)){
+      if(lngPrice > 15)     { score += 8; reasons.push(`JKM LNG $${lngPrice} — premium → LNG producers win`); }
+      else if(lngPrice > 12){ score += 4; reasons.push(`JKM LNG $${lngPrice} — firm`); }
+      if(gasPrice > 3.5)    { score += 5; reasons.push(`Nat Gas $${gasPrice} — tight supply boost`); }
+      if(ttfPrice > 40)     { score += 4; reasons.push('TTF elevated → EU gas demand'); }
+    }
+    if(ticker === 'FRO'){
+      // Tankers benefit from long-haul rerouting & wide Brent-WTI spreads
+      if(spread > 4)    { score += 8; reasons.push(`Wide B-WTI spread $${spread.toFixed(1)} → long-haul tankers`); }
+      if(escalation>60) { score += 6; reasons.push('Hormuz risk → tanker demand surge'); }
+    }
+    if(ticker === 'DRO'){
+      // Drone/defence benefits from pure conflict escalation, NOT commodity prices
+      if(escalation > 65){ score += 10; reasons.push('Defence spending up in conflict'); }
+      if(escalation < 40){ score -= 10; reasons.push('De-escalation = defence demand dip'); }
+      // Gas/LNG less relevant for DRO
+      score -= (gasPrice - 3) * 1; // minor negative if just commodity play
+    }
+    if(ticker === 'OOO'){
+      // OOO is a Brent ETF — pure oil price play
+      if(brent > 100) { score += 8; reasons.push('Brent >$100 = OOO direct uplift'); }
+      if(brentChg > 0){ score += brentChg * 1.5; } else { score += brentChg * 2; }
+    }
+
+    // ── 5. Technical signals ──────────────────────────────────────────────
+    if(rsi > 0 && rsi < 35)       { score += 10; reasons.push(`RSI ${rsi} — oversold BUY zone`); }
+    else if(rsi >= 35 && rsi < 50){ score += 5;  reasons.push(`RSI ${rsi} — reset, neutral`); }
+    else if(rsi > 72)             { score -= 12; reasons.push(`RSI ${rsi} — overbought, wait`); }
+    if(above50){ score += 5; reasons.push('Above 50-EMA ✓'); }
+    if(golden) { score += 8; reasons.push('Golden cross active ✓'); }
+
+    // ── 6. Price action (day change) ──────────────────────────────────────
+    if(chg < -3){ score += 4; reasons.push(`Dip ${chg}% — entry opportunity`); }
+    if(chg > 5) { score -= 3; reasons.push(`Chased ${chg}% — wait pullback`); }
+
+    // ── 7. Volume signal ──────────────────────────────────────────────────
+    if(volRatio > 2.0){ score += 7; reasons.push(`Volume ${volRatio.toFixed(1)}x avg — institutional activity`); }
+    else if(volRatio > 1.5){ score += 3; reasons.push(`Volume ${volRatio.toFixed(1)}x avg — above average`); }
+    else if(volRatio < 0.5 && price > 0){ score -= 4; reasons.push('Low volume — weak conviction'); }
+
+    // ── 8. Macro flow ─────────────────────────────────────────────────────
+    if(liquidity > 65){ score += 4; reasons.push(`Liquidity ${liquidity} — supportive`); }
+    if(rateExp === 'cut')  { score += 3; reasons.push('Rate cut — bullish energy flow'); }
+    if(rateExp === 'hike') { score -= 4; reasons.push('Rate hike risk — bearish flow'); }
+    if(sentiment === 'escalating')   { score += 6; reasons.push('Iran sentiment escalating'); }
+    if(sentiment === 'de-escalating'){ score -= 8; reasons.push('De-escalation = thesis risk'); }
+
+    score = Math.min(100, Math.max(0, Math.round(score)));
+    const prob = Math.min(95, Math.max(5, Math.round(score * 0.85 + (escalation > 60 ? 8 : 0))));
+
+    let action, alloc, signalClr;
+    if(score >= 80)     { action='BUY';        alloc=5000; signalClr='#10b981'; }
+    else if(score >= 65){ action='ACCUMULATE'; alloc=3000; signalClr='#60a5fa'; }
+    else if(score >= 50){ action='HOLD/WATCH'; alloc=1500; signalClr='#f59e0b'; }
+    else                { action='AVOID';      alloc=0;    signalClr='#ef4444'; }
+
+    const stop = price>0 ? (price*0.85).toFixed(3) : '—';
+    const t1   = price>0 ? (price*1.20).toFixed(3) : '—';
+    const t2   = price>0 ? (price*1.30).toFixed(3) : '—';
+    return { ticker, exchange:EXCHANGES[ticker], name:TICKER_NAMES[ticker], conv, rsi, price, chg, vol, volRatio, score, prob, action, alloc, signalClr, reasons:reasons.slice(0,5).join(' · '), stop, t1, t2 };
+  }).sort((a,b)=>b.score-a.score);
+}
+
+function runAITrades(){
+  const decisions = computeAIDecisions();
+  const now = new Date();
+  const dateStr = new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Sydney',day:'2-digit',month:'short',year:'numeric'}).format(now);
+  const timeStr = new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
+  const brent = S.checklist.step1.brent || '107.62';
+  const esc = S.checklist.step4.escalationScore || 50;
+  const sent = S.checklist.step4.sentiment || 'stable';
+
+  // Market Reading
+  const sentIcon = sent==='escalating'?'🔴':sent==='de-escalating'?'🟢':'🟡';
+  const escRisk = esc>70?'⚠️ EXTREME — Hormuz closure risk':esc>50?'⚠️ ELEVATED — military activity':esc>30?'MODERATE — sanctions pressure':'🟢 LOW — diplomatic progress';
+  document.getElementById('ai-market-reading').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:12px">
+      <div class="card-sm"><div style="font-size:12px;color:#64748b">Brent Crude</div><div style="font-size:18px;font-weight:700;color:#10b981">$${brent}</div><div style="font-size:12px;color:#64748b">+${S.checklist.step1.brentChg||'1.14'}%</div></div>
+      <div class="card-sm"><div style="font-size:12px;color:#64748b">Iran Escalation</div><div style="font-size:18px;font-weight:700;color:${esc>60?'#ef4444':'#f59e0b'}">${esc}/100</div><div style="font-size:12px;color:#64748b">${sentIcon} ${sent}</div></div>
+      <div class="card-sm"><div style="font-size:12px;color:#64748b">Overall Conviction</div><div style="font-size:18px;font-weight:700;color:${convColor(S.checklist.step9.overall||65)}">${S.checklist.step9.overall||65}%</div><div style="font-size:12px;color:#64748b">${convLabel(S.checklist.step9.overall||65)}</div></div>
+      <div class="card-sm"><div style="font-size:12px;color:#64748b">Risk Level</div><div style="font-size:13px;font-weight:600;color:#f59e0b">${escRisk}</div></div>
+    </div>
+    <div style="font-size:13px;color:#94a3b8;padding:10px;background:#060f1c;border-radius:8px;border-left:3px solid #10b981">
+      <strong style="color:#10b981">AI Assessment (${dateStr} ${timeStr}):</strong> Brent at $${brent} with escalation at ${esc}/100 (${sent}).
+      ${esc>65?'Iran conflict thesis <strong style="color:#10b981">ACTIVE</strong> — energy stocks positioned for upside. Priority: KAR, WDS, OXY, FRO.'
+      :esc>40?'Thesis <strong style="color:#f59e0b">MONITORING</strong> — partial positions appropriate, watch escalation for re-entry.'
+      :'Thesis <strong style="color:#ef4444">WEAKENING</strong> — reduce exposure, protect capital, monitor for re-escalation.'}
+      Top scoring: ${decisions[0]?.ticker||'—'} (${decisions[0]?.score||'—'}/100), ${decisions[1]?.ticker||'—'} (${decisions[1]?.score||'—'}/100).
+    </div>`;
+
+  // Decisions table
+  document.getElementById('ai-decisions-table').innerHTML = `
+    <table><thead><tr><th>Ticker</th><th>AI Score<span class="info-icon" onclick="showInfo('aisignals')" style="margin-left:4px">i</span></th><th>Signal</th><th>Probability</th><th>Allocation</th><th>Entry</th><th>Stop –15%</th><th>T1 +20%</th><th>T2 +30%</th><th>Key Reasons</th></tr></thead>
+    <tbody>${decisions.map(d=>`<tr>
+      <td><span style="font-weight:800;color:#10b981;font-size:14px">${d.ticker}</span><br><span style="font-size:11px;color:#64748b">${d.name}</span></td>
+      <td><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:700;color:${convColor(d.score)};font-size:15px">${d.score}</span><div style="flex:1;min-width:50px"><div class="prob-bar"><div class="prob-fill" style="width:${d.score}%"></div></div></div></div></td>
+      <td><span class="tag" style="background:${d.signalClr}22;color:${d.signalClr};border:1px solid ${d.signalClr}44;font-size:12px">${d.action}</span></td>
+      <td><span style="font-weight:700;color:${d.prob>=70?'#10b981':d.prob>=55?'#f59e0b':'#ef4444'};font-size:14px">${d.prob}%</span></td>
+      <td style="font-weight:700;color:#fff">${d.alloc>0?'$'+d.alloc.toLocaleString():'—'}</td>
+      <td>${d.price>0?'$'+d.price:'Manual'}</td>
+      <td style="color:#ef4444">${d.stop}</td>
+      <td style="color:#10b981">${d.t1}</td>
+      <td style="color:#60a5fa">${d.t2}</td>
+      <td style="font-size:12px;color:#94a3b8;max-width:200px">${d.reasons}</td>
+    </tr>`).join('')}</tbody></table>`;
+
+  // Execute AI paper trades (BUY signals only)
+  const buys = decisions.filter(d=>d.action==='BUY'||d.action==='ACCUMULATE');
+  buys.forEach(d=>{
+    if(d.price>0 && d.alloc>0){
+      const shares = Math.floor(d.alloc/d.price);
+      if(shares>0){
+        const existing = aiPortfolio.positions.find(p=>p.ticker===d.ticker);
+        if(!existing){
+          aiPortfolio.positions.push({ticker:d.ticker,exchange:d.exchange,entry:d.price,current:d.price,shares,stop:d.price*0.85,t1:d.price*1.20,conv:d.score,date:dateStr});
+          aiPortfolio.history.push({date:dateStr,time:timeStr,ticker:d.ticker,action:d.action,shares,price:d.price,score:d.score,prob:d.prob,reasons:d.reasons});
+        }
+      }
+    }
+  });
+
+  renderAIPortfolio();
+  logAIJournalEntry(decisions, dateStr, timeStr, brent, esc, sent);
+  toast('AI analysis complete ✓','green');
+}
+
+function renderAIPortfolio(){
+  const upnl = aiPortfolio.positions.reduce((a,p)=>a+(p.current-p.entry)*p.shares,0);
+  document.getElementById('ai-capital').textContent='$'+Math.round(20000+upnl).toLocaleString();
+  document.getElementById('ai-pnl').textContent=(upnl>=0?'+':'')+'$'+upnl.toFixed(0);
+  document.getElementById('ai-pnl').style.color=upnl>=0?'#10b981':'#ef4444';
+  document.getElementById('ai-pos-count').textContent=aiPortfolio.positions.length;
+  const tbody = document.getElementById('ai-portfolio-table');
+  if(!aiPortfolio.positions.length){ tbody.innerHTML='<div style="color:#64748b;font-size:13px;text-align:center;padding:16px">No AI positions (AI needs price data in Step 7 to auto-enter).</div>'; return; }
+  tbody.innerHTML=`<table><thead><tr><th>Ticker</th><th>Entry</th><th>Current</th><th>Shares</th><th>P&L</th><th>AI Score</th><th>Stop</th></tr></thead><tbody>${aiPortfolio.positions.map(p=>{
+    const pnl=(p.current-p.entry)*p.shares;
+    return `<tr><td style="font-weight:700;color:#10b981">${p.ticker}</td><td>$${p.entry.toFixed(3)}</td>
+    <td><input type="number" value="${p.current.toFixed(3)}" step="0.001" onchange="updateAIPrice('${p.ticker}',this.value)" style="width:80px;padding:3px 6px;font-size:12px"></td>
+    <td>${p.shares}</td><td style="color:${pnl>=0?'#10b981':'#ef4444'};font-weight:700">${pnl>=0?'+':''}$${pnl.toFixed(0)}</td>
+    <td><span class="tag ${convClass(p.conv)}">${p.conv}</span></td><td style="color:#ef4444">$${(p.stop||0).toFixed(3)}</td></tr>`;
+  }).join('')}</tbody></table>`;
+}
+function updateAIPrice(t,v){ const p=aiPortfolio.positions.find(x=>x.ticker===t); if(p){p.current=parseFloat(v)||p.current; renderAIPortfolio();} }
+
+function logAIJournalEntry(decisions, date, time, brent, esc, sent){
+  if(!S.aiJournal) S.aiJournal=[];
+  S.aiJournal.unshift({id:Date.now(),date,time,brent,esc,sent,decisions:decisions.map(d=>({ticker:d.ticker,score:d.score,action:d.action,prob:d.prob,alloc:d.alloc,reasons:d.reasons}))});
+  if(S.aiJournal.length>100) S.aiJournal.pop();
+  saveState();
+  renderAIJournal();
+}
+
+function renderAIJournal(){
+  const c=document.getElementById('ai-journal-entries');
+  if(!S.aiJournal||!S.aiJournal.length){ c.innerHTML='<div style="color:#64748b;font-size:13px;text-align:center;padding:16px">No AI journal entries yet.</div>'; return; }
+  c.innerHTML=S.aiJournal.slice(0,10).map(e=>`
+    <div style="padding:10px;border-bottom:1px solid #1a2d4a">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+        <span class="ai-badge">AI</span>
+        <span style="font-size:13px;font-weight:700;color:#fff">${e.date}</span>
+        <span style="font-size:12px;color:#64748b">${e.time}</span>
+        <span class="tag ${e.esc>65?'tag-r':e.esc>40?'tag-y':'tag-g'}" style="font-size:11px">War ${e.esc}/100</span>
+      </div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:6px">Brent $${e.brent} · Sentiment: ${e.sent}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${e.decisions.filter(d=>d.action!=='AVOID').map(d=>`<span class="tag" style="background:${convColor(d.score)}22;color:${convColor(d.score)};border:1px solid ${convColor(d.score)}44;font-size:11px">${d.ticker} ${d.action} ${d.prob}%</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+// ============================================================
+// COMMUNITY LEADERBOARD
+// ============================================================
+const SAMPLE_COMMUNITY = [
+  {rank:1,name:'EnergyBull_22',portfolio:22840,pnl:2840,pnlPct:14.2,top:'KAR',conv:82,since:'23 Mar 26'},
+  {rank:2,name:'HormuzTrader',portfolio:21950,pnl:1950,pnlPct:9.75,top:'WDS',conv:78,since:'23 Mar 26'},
+  {rank:3,name:'OilShockHunter',portfolio:21600,pnl:1600,pnlPct:8.0,top:'OXY',conv:75,since:'23 Mar 26'},
+  {rank:4,name:'FrontlineFRO',portfolio:21200,pnl:1200,pnlPct:6.0,top:'FRO',conv:72,since:'24 Mar 26'},
+  {rank:5,name:'ASXEnergy_AU',portfolio:20900,pnl:900,pnlPct:4.5,top:'PDN',conv:70,since:'24 Mar 26'},
+];
+
+function renderCommunityLeaderboard(){
+  if(!S.subscribers) S.subscribers=[];
+  const userEntries = S.subscribers.map((s,i)=>({rank:SAMPLE_COMMUNITY.length+i+1,name:s.name||'Anonymous',portfolio:20000,pnl:0,pnlPct:0,top:'—',conv:65,since:s.date||'23 Mar 26'}));
+  const all=[...SAMPLE_COMMUNITY,...userEntries];
+  document.getElementById('comm-members').textContent=all.length;
+  document.getElementById('leaderboard-body').innerHTML=all.map(r=>`<tr>
+    <td style="font-weight:700;color:${r.rank<=3?'#f59e0b':'#64748b'}">${r.rank<=1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':'#'+r.rank}</td>
+    <td style="font-weight:600;color:#fff">${r.name}</td>
+    <td>$${r.portfolio.toLocaleString()}</td>
+    <td style="color:${r.pnl>=0?'#10b981':'#ef4444'};font-weight:700">${r.pnl>=0?'+':''}$${r.pnl.toLocaleString()}</td>
+    <td style="color:${r.pnlPct>=0?'#10b981':'#ef4444'};font-weight:700">${r.pnlPct>=0?'+':''}${r.pnlPct.toFixed(1)}%</td>
+    <td style="font-weight:700;color:#10b981">${r.top}</td>
+    <td><span class="tag ${convClass(r.conv)}">${r.conv}%</span></td>
+    <td style="color:#64748b;font-size:12px">${r.since}</td>
+  </tr>`).join('');
+}
+
+async function submitCommunity(){
+  const name=document.getElementById('comm-name').value.trim();
+  const email=document.getElementById('comm-email').value.trim();
+  const top=document.getElementById('comm-top').value;
+  if(!name){ toast('Enter your name/alias','red'); return; }
+  const invested=S.portfolio.positions.reduce((a,p)=>a+p.entry*p.shares,0);
+  const upnl=S.portfolio.positions.reduce((a,p)=>a+(p.current-p.entry)*p.shares,0);
+  if(!S.subscribers) S.subscribers=[];
+  S.subscribers.push({name,email,top,date:new Date().toISOString().slice(0,10),portfolio:Math.round(20000+upnl),pnl:Math.round(upnl),pnlPct:((upnl/20000)*100).toFixed(1)});
+  saveState(); renderCommunityLeaderboard();
+  if(!FORMSPREE_ENDPOINT.includes('YOUR_FORM_ID')){
+    try{ const fd=new FormData(); fd.append('name',name);fd.append('email',email||'not provided');fd.append('top',top);fd.append('portfolio',Math.round(20000+upnl));fd.append('pnl',Math.round(upnl));fd.append('_subject','Community submission: '+name); await fetch(FORMSPREE_ENDPOINT,{method:'POST',body:fd,headers:{Accept:'application/json'}}); }catch(e){}
+  }
+  toast('Added to leaderboard! ✓','green');
+}
+
+// ============================================================
+// TRADINGVIEW CHARTS (Price Monitor)
+// ============================================================
+const TV_SYMBOLS = {
+  WDS:  {sym:'ASX:WDS',  name:'Woodside'},
+  KAR:  {sym:'ASX:KAR',  name:'Karoon'},
+  DRO:  {sym:'ASX:DRO',  name:'DroneShield'},
+  PDN:  {sym:'ASX:PDN',  name:'Paladin'},
+  OOO:  {sym:'ASX:OOO',  name:'BetaShares Crude'},
+  OXY:  {sym:'NYSE:OXY', name:'Occidental'},
+  FRO:  {sym:'NYSE:FRO', name:'Frontline'}
+};
+
+function buildTVCharts(theme='dark'){
+  // Charts are now pre-rendered as static HTML inline widgets (same as ticker tape).
+  // No dynamic rebuild needed — static inline <script> tags execute reliably.
+  // Theme change: charts stay dark (acceptable); use "Full chart ↗" links for light theme.
+}
+
+function rebuildCharts(theme){
+  // Charts are pre-rendered in static HTML — no rebuild needed.
+}
+
+// ============================================================
+// THEME TOGGLE
+// ============================================================
+function toggleTheme(){
+  const isLight=document.body.classList.toggle('light');
+  const btn=document.getElementById('theme-btn');
+  btn.textContent=isLight?'☀️':'🌙';
+  btn.style.borderColor=isLight?'#cbd5e1':'#1a2d4a';
+  localStorage.setItem('iceTradelab_theme',isLight?'light':'dark');
+  setTimeout(renderEquityChart,50);
+  buildTVCharts(isLight?'light':'dark');
+}
+function applyStoredTheme(){
+  const t=localStorage.getItem('iceTradelab_theme');
+  if(t==='light'){
+    document.body.classList.add('light');
+    const btn=document.getElementById('theme-btn');
+    if(btn){ btn.textContent='☀️'; btn.style.borderColor='#cbd5e1'; }
+  }
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
