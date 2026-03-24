@@ -2504,30 +2504,46 @@ const YAHOO_SYMBOLS = 'BZ=F,CL=F,NG=F,HO=F,WDS.AX,KAR.AX,DRO.AX,PDN.AX,OOO.AX,OX
 let livepriceRefreshTimer = null;
 
 async function fetchLivePrices(){
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${YAHOO_SYMBOLS}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketChange`;
-  const proxies = [
-    u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
-  ];
-  let quotes = [];
-  for(const makeProxy of proxies){
-    try {
-      const res = await fetch(makeProxy(url), {signal: AbortSignal.timeout(8000)});
-      const raw = await res.json();
-      // allorigins wraps in .contents; corsproxy.io / codetabs return raw JSON
-      const parsed = raw.contents ? JSON.parse(raw.contents) : raw;
-      quotes = parsed?.quoteResponse?.result || [];
-      if(quotes.length > 0) break;
-    } catch(e){ console.warn('Proxy failed, trying next...', e.message); }
+  const symMap={'WDS.AX':'WDS','KAR.AX':'KAR','DRO.AX':'DRO','PDN.AX':'PDN','OOO.AX':'OOO','OXY':'OXY','FRO':'FRO'};
+  const allSymbols = YAHOO_SYMBOLS.split(',');
+
+  // Try fetching individual tickers via Yahoo Finance chart API (v8) — more CORS-friendly
+  async function fetchViaChart(sym){
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=1d`;
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+      `https://thingproxy.freeboard.io/fetch/${url}`
+    ];
+    for(const proxy of proxies){
+      try{
+        const res = await fetch(proxy, {signal: AbortSignal.timeout(7000)});
+        const raw = await res.json();
+        const body = raw.contents ? JSON.parse(raw.contents) : raw;
+        const meta = body?.chart?.result?.[0]?.meta;
+        if(meta && meta.regularMarketPrice){
+          return {
+            symbol: sym,
+            regularMarketPrice: meta.regularMarketPrice,
+            regularMarketChangePercent: meta.regularMarketChangePercent || 0,
+            regularMarketChange: meta.regularMarketChange || 0
+          };
+        }
+      }catch(e){ /* try next */ }
+    }
+    return null;
   }
-  if(quotes.length === 0){ console.warn('All price proxies failed.'); return; }
+
+  // Fetch all symbols in parallel
+  const results = await Promise.all(allSymbols.map(s => fetchViaChart(s)));
+  const quotes = results.filter(Boolean);
+
+  if(quotes.length === 0){ console.warn('All price fetches failed — market may be closed or proxies blocked.'); return; }
+
   quotes.forEach(q => updateTickerItem(q));
-  // Sync key commodities into checklist step1
   const brent = quotes.find(q=>q.symbol==='BZ=F');
   if(brent){ S.checklist.step1.brent = brent.regularMarketPrice?.toFixed(2)||S.checklist.step1.brent; S.checklist.step1.brentChg = brent.regularMarketChangePercent?.toFixed(2)||S.checklist.step1.brentChg; }
-  // Sync stock prices into step7 and prices
-  const symMap={'WDS.AX':'WDS','KAR.AX':'KAR','DRO.AX':'DRO','PDN.AX':'PDN','OOO.AX':'OOO','OXY':'OXY','FRO':'FRO'};
   quotes.forEach(q=>{ const t=symMap[q.symbol]; if(t){ if(!S.checklist.step7[t]) S.checklist.step7[t]={}; S.checklist.step7[t].price=(q.regularMarketPrice||'').toString(); S.checklist.step7[t].chg=(q.regularMarketChangePercent?.toFixed(2)||'').toString(); if(S.prices[t]) S.prices[t]={price:q.regularMarketPrice?.toFixed(3)||'',chg:q.regularMarketChangePercent?.toFixed(2)||''}; } });
   saveState();
   buildPriceCards();
